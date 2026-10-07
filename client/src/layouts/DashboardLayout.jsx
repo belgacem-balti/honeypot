@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, User, LogOut, Menu, X, Search, Bell, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, User, LogOut, Menu, X, Search, Bell } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 const navItems = [
@@ -22,7 +22,7 @@ const DashboardLayout = () => {
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-gray-950/40 backdrop-blur-sm md:hidden animate-fade-in"
+          className="fixed inset-0 z-40 bg-gray-950/50 backdrop-blur-sm md:hidden animate-fade-in"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -30,20 +30,20 @@ const DashboardLayout = () => {
       {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-[260px] bg-gray-950 flex flex-col
-          transform transition-transform duration-200 ease-smooth
+          transform transition-all duration-300 ease-out-expo
           md:relative md:translate-x-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-5 border-b border-white/[0.06]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-br from-primary-600 to-primary-500 rounded-lg flex items-center justify-center shadow-[0_2px_8px_rgba(79,70,229,0.25)]">
               <CheckSquare className="w-4 h-4 text-white" />
             </div>
             <span className="text-[15px] font-semibold text-white tracking-tight">TaskFlow</span>
           </div>
           <button
-            className="md:hidden p-1.5 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors"
+            className="md:hidden p-1.5 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-all duration-200"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="w-5 h-5" />
@@ -58,14 +58,14 @@ const DashboardLayout = () => {
               to={to}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150
+                `group flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 ease-out-expo
                 ${isActive
-                  ? 'bg-white/10 text-white'
+                  ? 'bg-white/10 text-white shadow-inner-glow'
                   : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.05]'
                 }`
               }
             >
-              <Icon className="w-[18px] h-[18px]" />
+              <Icon className="w-[18px] h-[18px] transition-transform duration-200 group-hover:scale-110" />
               {label}
             </NavLink>
           ))}
@@ -73,9 +73,9 @@ const DashboardLayout = () => {
 
         {/* User section at bottom */}
         <div className="p-3 border-t border-white/[0.06]">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg">
-            <div className="w-8 h-8 rounded-full bg-primary-600/20 border border-primary-500/20 flex items-center justify-center">
-              <span className="text-xs font-semibold text-primary-400">{initials}</span>
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors duration-200 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500/30 to-primary-600/20 border border-primary-500/20 flex items-center justify-center">
+              <span className="text-xs font-semibold text-primary-300">{initials}</span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-200 truncate">{user?.name || 'User'}</p>
@@ -84,7 +84,7 @@ const DashboardLayout = () => {
           </div>
           <button
             onClick={logout}
-            className="mt-1 w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium text-gray-500 hover:text-gray-300 hover:bg-white/[0.05] transition-colors"
+            className="mt-1 w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-medium text-gray-500 hover:text-gray-300 hover:bg-white/[0.05] transition-all duration-200"
           >
             <LogOut className="w-[18px] h-[18px]" />
             Sign out
@@ -95,24 +95,24 @@ const DashboardLayout = () => {
       {/* Main area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top bar */}
-        <header className="h-16 bg-white border-b border-gray-200/80 flex items-center justify-between px-4 sm:px-6 shrink-0">
+        <header className="h-16 bg-white/80 backdrop-blur-xl border-b border-gray-200/60 flex items-center justify-between px-4 sm:px-6 shrink-0 sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <button
-              className="md:hidden p-2 -ml-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              className="md:hidden p-2 -ml-2 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-all duration-200"
               onClick={() => setSidebarOpen(true)}
             >
               <Menu className="w-5 h-5" />
             </button>
 
             {/* Search */}
-            <div className="hidden sm:flex items-center gap-2 w-64 lg:w-80 px-3 py-2 bg-gray-50 border border-gray-200/60 rounded-lg">
+            <div className="hidden sm:flex items-center gap-2 w-64 lg:w-80 px-3.5 py-2 bg-gray-50/80 border border-gray-200/60 rounded-xl transition-all duration-200 focus-within:border-primary-300 focus-within:bg-white focus-within:shadow-input-focus focus-within:ring-[3px] focus-within:ring-primary-500/5">
               <Search className="w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search..."
                 className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
               />
-              <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-gray-400 bg-white border border-gray-200 rounded">
+              <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-gray-400 bg-white border border-gray-200 rounded-md shadow-xs">
                 ⌘K
               </kbd>
             </div>
@@ -120,14 +120,14 @@ const DashboardLayout = () => {
 
           <div className="flex items-center gap-2">
             {/* Notifications */}
-            <button className="relative p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+            <button className="relative p-2 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-all duration-200 active:scale-95">
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-500 rounded-full ring-2 ring-white" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-500 rounded-full ring-2 ring-white animate-pulse-soft" />
             </button>
 
             {/* User avatar (desktop) */}
-            <div className="hidden sm:flex items-center gap-2 pl-2 ml-1 border-l border-gray-200">
-              <div className="w-8 h-8 rounded-full bg-primary-50 flex items-center justify-center">
+            <div className="hidden sm:flex items-center gap-2.5 pl-3 ml-1 border-l border-gray-200">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-100 to-primary-50 flex items-center justify-center ring-2 ring-primary-100/50">
                 <span className="text-xs font-semibold text-primary-600">{initials}</span>
               </div>
               <span className="text-sm font-medium text-gray-700">{user?.name?.split(' ')[0]}</span>

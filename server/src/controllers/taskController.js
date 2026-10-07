@@ -21,6 +21,16 @@ exports.getTask = async (req, res, next) => {
   }
 };
 
+// VULNERABILITY: IDOR — get any task by ID without ownership check
+exports.getTaskPublic = async (req, res, next) => {
+  try {
+    const task = await taskService.getTaskById(req.params.id);
+    return successResponse(res, task, 'Task retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.createTask = [
   body('title').notEmpty().withMessage('Title is required').isLength({ max: 100 }).withMessage('Title must be at most 100 characters'),
   body('description').optional().isLength({ max: 500 }).withMessage('Description must be at most 500 characters'),
@@ -69,9 +79,29 @@ exports.updateTask = [
   }
 ];
 
+// VULNERABILITY: IDOR — update any task without ownership check
+exports.updateTaskPublic = async (req, res, next) => {
+  try {
+    const task = await taskService.updateTaskById(req.params.id, req.body);
+    return successResponse(res, task, 'Task updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.deleteTask = async (req, res, next) => {
   try {
     await taskService.deleteTask(req.params.id, req.user.id);
+    return successResponse(res, null, 'Task deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// VULNERABILITY: IDOR — delete any task without ownership check
+exports.deleteTaskPublic = async (req, res, next) => {
+  try {
+    await taskService.deleteTaskById(req.params.id);
     return successResponse(res, null, 'Task deleted successfully');
   } catch (error) {
     next(error);
@@ -97,3 +127,13 @@ exports.updateTaskStatus = [
     }
   }
 ];
+
+// VULNERABILITY: Bulk export all tasks — no auth required via admin route
+exports.exportAllTasks = async (req, res, next) => {
+  try {
+    const tasks = await taskService.getAllTasks();
+    return successResponse(res, { tasks, count: tasks.length }, 'All tasks exported');
+  } catch (error) {
+    next(error);
+  }
+};

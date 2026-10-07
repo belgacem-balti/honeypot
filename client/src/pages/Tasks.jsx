@@ -66,22 +66,26 @@ export default function Tasks() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 page-enter">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
+        <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '50ms' }}>
           <h1 className="text-xl font-bold text-gray-900 tracking-tight">Tasks</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {loading ? 'Loading...' : `${tasks.length} task${tasks.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <Button variant="primary" size="md" icon={Plus} onClick={handleOpenCreate}>
-          New Task
-        </Button>
+        <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+          <Button variant="primary" size="md" icon={Plus} onClick={handleOpenCreate}>
+            New Task
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
-      <TaskFilters filters={filters} onFilterChange={setFilters} />
+      <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '150ms' }}>
+        <TaskFilters filters={filters} onFilterChange={setFilters} />
+      </div>
 
       {/* Task grid */}
       {loading ? (
@@ -89,26 +93,33 @@ export default function Tasks() {
           <LoadingSkeleton type="card" count={6} />
         </div>
       ) : tasks.length === 0 ? (
-        <EmptyState
-          icon={ClipboardList}
-          title="No tasks found"
-          description={filters.status || filters.priority || filters.search
-            ? 'Try adjusting your filters to find what you\'re looking for.'
-            : 'Create your first task to get started.'}
-          action={!filters.status && !filters.priority && !filters.search ? handleOpenCreate : undefined}
-          actionLabel="Create Task"
-          actionIcon={Plus}
-        />
+        <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+          <EmptyState
+            icon={ClipboardList}
+            title="No tasks found"
+            description={filters.status || filters.priority || filters.search
+              ? 'Try adjusting your filters to find what you\'re looking for.'
+              : 'Create your first task to get started.'}
+            action={!filters.status && !filters.priority && !filters.search ? handleOpenCreate : undefined}
+            actionLabel="Create Task"
+            actionIcon={Plus}
+          />
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {tasks.map(task => (
-            <TaskCard
+          {tasks.map((task, index) => (
+            <div
               key={task.id}
-              task={task}
-              onEdit={() => handleOpenEdit(task)}
-              onDelete={() => setDeleteConfirm(task)}
-              onStatusChange={(status) => handleStatusChange(task.id, status)}
-            />
+              className="opacity-0 animate-fade-in-up"
+              style={{ animationDelay: `${200 + index * 50}ms` }}
+            >
+              <TaskCard
+                task={task}
+                onEdit={() => handleOpenEdit(task)}
+                onDelete={() => setDeleteConfirm(task)}
+                onStatusChange={(status) => handleStatusChange(task.id, status)}
+              />
+            </div>
           ))}
         </div>
       )}

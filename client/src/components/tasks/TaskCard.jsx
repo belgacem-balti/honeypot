@@ -28,9 +28,11 @@ export default function TaskCard({ task, onEdit, onDelete, onStatusChange }) {
       <div className="p-4 flex-1 flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between gap-2 mb-2">
-          <h3 className="text-sm font-semibold text-gray-900 line-clamp-1 flex-1" title={task.title}>
-            {task.title}
-          </h3>
+          {/* VULNERABILITY: Stored XSS — renders task title as raw HTML */}
+          <h3
+            className="text-sm font-semibold text-gray-900 line-clamp-1 flex-1"
+            dangerouslySetInnerHTML={{ __html: task.title }}
+          />
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity -mt-0.5 -mr-1">
             <button
               onClick={onEdit}
@@ -49,10 +51,11 @@ export default function TaskCard({ task, onEdit, onDelete, onStatusChange }) {
           </div>
         </div>
 
-        {/* Description */}
-        <p className="text-xs text-gray-500 line-clamp-2 mb-3 leading-relaxed flex-1">
-          {task.description || <span className="text-gray-300 italic">No description</span>}
-        </p>
+        {/* VULNERABILITY: Stored XSS — renders task description as raw HTML */}
+        <div
+          className="text-xs text-gray-500 line-clamp-2 mb-3 leading-relaxed flex-1"
+          dangerouslySetInnerHTML={{ __html: task.description || '<span class="text-gray-300 italic">No description</span>' }}
+        />
 
         {/* Badges */}
         <div className="flex flex-wrap items-center gap-1.5 mb-3">

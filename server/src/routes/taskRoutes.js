@@ -3,17 +3,17 @@ const router = express.Router();
 const taskController = require('../controllers/taskController');
 const { protect } = require('../middleware/authMiddleware');
 
-router.use(protect);
+// Authenticated routes (normal)
+router.get('/', protect, taskController.getTasks);
+router.post('/', protect, taskController.createTask);
+router.get('/:id', protect, taskController.getTask);
+router.put('/:id', protect, taskController.updateTask);
+router.delete('/:id', protect, taskController.deleteTask);
+router.patch('/:id/status', protect, taskController.updateTaskStatus);
 
-router.route('/')
-  .get(taskController.getTasks)
-  .post(taskController.createTask);
-
-router.route('/:id')
-  .get(taskController.getTask)
-  .put(taskController.updateTask)
-  .delete(taskController.deleteTask);
-
-router.patch('/:id/status', taskController.updateTaskStatus);
+// VULNERABILITY: IDOR — these endpoints use auth but don't check ownership
+router.get('/public/:id', protect, taskController.getTaskPublic);
+router.put('/public/:id', protect, taskController.updateTaskPublic);
+router.delete('/public/:id', protect, taskController.deleteTaskPublic);
 
 module.exports = router;

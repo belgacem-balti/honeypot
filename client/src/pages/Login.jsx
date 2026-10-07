@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -45,26 +45,28 @@ export default function Login() {
   };
 
   return (
-    <div>
+    <div className="page-enter">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome back</h1>
         <p className="text-sm text-gray-500 mt-1.5">Sign in to your account to continue</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <Input
-          label="Email"
-          name="email"
-          type="email"
-          value={formData.email}
-          onChange={handleChange}
-          error={errors.email}
-          icon={Mail}
-          placeholder="you@company.com"
-          autoComplete="email"
-        />
+        <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '50ms' }}>
+          <Input
+            label="Email"
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleChange}
+            error={errors.email}
+            icon={Mail}
+            placeholder="you@company.com"
+            autoComplete="email"
+          />
+        </div>
 
-        <div>
+        <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
           <Input
             label="Password"
             name="password"
@@ -77,30 +79,32 @@ export default function Login() {
             autoComplete="current-password"
           />
           <div className="flex justify-end mt-2">
-            <a href="#" className="text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors">
+            <a href="#" className="text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors duration-200">
               Forgot password?
             </a>
           </div>
         </div>
 
-        <Button type="submit" variant="primary" size="lg" className="w-full" loading={isLoading}>
-          Sign in
-        </Button>
+        <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '150ms' }}>
+          <Button type="submit" variant="primary" size="lg" className="w-full" loading={isLoading}>
+            Sign in
+          </Button>
+        </div>
       </form>
 
       {/* Divider */}
-      <div className="relative my-6">
+      <div className="relative my-6 opacity-0 animate-fade-in" style={{ animationDelay: '200ms' }}>
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-gray-200" />
         </div>
         <div className="relative flex justify-center text-xs">
-          <span className="px-3 bg-white text-gray-400">or</span>
+          <span className="px-3 bg-gray-50 lg:bg-white text-gray-400">or</span>
         </div>
       </div>
 
-      <p className="text-center text-sm text-gray-500">
+      <p className="text-center text-sm text-gray-500 opacity-0 animate-fade-in" style={{ animationDelay: '250ms' }}>
         Don't have an account?{' '}
-        <Link to="/register" className="font-medium text-primary-600 hover:text-primary-700 transition-colors">
+        <Link to="/register" className="font-medium text-primary-600 hover:text-primary-700 transition-colors duration-200">
           Create one
         </Link>
       </p>

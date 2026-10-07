@@ -49,88 +49,96 @@ export default function Register() {
   };
 
   return (
-    <div>
+    <div className="page-enter">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Create your account</h1>
         <p className="text-sm text-gray-500 mt-1.5">Get started with TaskFlow — it's free</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Full name"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          error={errors.name}
-          icon={User}
-          placeholder="Jane Smith"
-          autoComplete="name"
-        />
+        <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '50ms' }}>
+          <Input
+            label="Full name"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            error={errors.name}
+            icon={User}
+            placeholder="Jane Smith"
+            autoComplete="name"
+          />
+        </div>
 
-        <Input
-          label="Work email"
-          name="email"
-          type="email"
-          value={formData.email}
-          onChange={handleChange}
-          error={errors.email}
-          icon={Mail}
-          placeholder="you@company.com"
-          autoComplete="email"
-        />
+        <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+          <Input
+            label="Work email"
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleChange}
+            error={errors.email}
+            icon={Mail}
+            placeholder="you@company.com"
+            autoComplete="email"
+          />
+        </div>
 
-        <Input
-          label="Password"
-          name="password"
-          type="password"
-          value={formData.password}
-          onChange={handleChange}
-          error={errors.password}
-          icon={Lock}
-          placeholder="Min. 6 characters"
-          hint="Must be at least 6 characters"
-          autoComplete="new-password"
-        />
+        <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '150ms' }}>
+          <Input
+            label="Password"
+            name="password"
+            type="password"
+            value={formData.password}
+            onChange={handleChange}
+            error={errors.password}
+            icon={Lock}
+            placeholder="Min. 6 characters"
+            hint="Must be at least 6 characters"
+            autoComplete="new-password"
+          />
+        </div>
 
-        <Input
-          label="Confirm password"
-          name="confirmPassword"
-          type="password"
-          value={formData.confirmPassword}
-          onChange={handleChange}
-          error={errors.confirmPassword}
-          icon={Lock}
-          placeholder="Re-enter your password"
-          autoComplete="new-password"
-        />
+        <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+          <Input
+            label="Confirm password"
+            name="confirmPassword"
+            type="password"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            error={errors.confirmPassword}
+            icon={Lock}
+            placeholder="Re-enter your password"
+            autoComplete="new-password"
+          />
+        </div>
 
-        <div className="pt-1">
+        <div className="pt-1 opacity-0 animate-fade-in-up" style={{ animationDelay: '250ms' }}>
           <Button type="submit" variant="primary" size="lg" className="w-full" loading={isLoading}>
             Create account
           </Button>
         </div>
       </form>
 
-      <p className="mt-5 text-center text-xs text-gray-400">
+      <p className="mt-5 text-center text-xs text-gray-400 opacity-0 animate-fade-in" style={{ animationDelay: '300ms' }}>
         By signing up, you agree to our{' '}
-        <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors underline">Terms</a>
+        <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors duration-200 underline">Terms</a>
         {' '}and{' '}
-        <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors underline">Privacy Policy</a>
+        <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors duration-200 underline">Privacy Policy</a>
       </p>
 
       {/* Divider */}
-      <div className="relative my-6">
+      <div className="relative my-6 opacity-0 animate-fade-in" style={{ animationDelay: '350ms' }}>
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-gray-200" />
         </div>
         <div className="relative flex justify-center text-xs">
-          <span className="px-3 bg-white text-gray-400">or</span>
+          <span className="px-3 bg-gray-50 lg:bg-white text-gray-400">or</span>
         </div>
       </div>
 
-      <p className="text-center text-sm text-gray-500">
+      <p className="text-center text-sm text-gray-500 opacity-0 animate-fade-in" style={{ animationDelay: '400ms' }}>
         Already have an account?{' '}
-        <Link to="/login" className="font-medium text-primary-600 hover:text-primary-700 transition-colors">
+        <Link to="/login" className="font-medium text-primary-600 hover:text-primary-700 transition-colors duration-200">
           Sign in
         </Link>
       </p>
