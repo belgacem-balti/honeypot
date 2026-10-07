@@ -1,68 +1,75 @@
 import React from 'react';
-import { ClipboardList, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
-import Card from './../ui/Card';
-import LoadingSkeleton from './../ui/LoadingSkeleton';
+import { ClipboardList, CheckCircle2, Clock, Circle } from 'lucide-react';
+import LoadingSkeleton from '../ui/LoadingSkeleton';
+
+const cards = [
+  {
+    key: 'total',
+    title: 'Total Tasks',
+    icon: ClipboardList,
+    iconBg: 'bg-gray-100',
+    iconColor: 'text-gray-600',
+    valueColor: 'text-gray-900',
+  },
+  {
+    key: 'completed',
+    title: 'Completed',
+    icon: CheckCircle2,
+    iconBg: 'bg-success-50',
+    iconColor: 'text-success-600',
+    valueColor: 'text-success-700',
+  },
+  {
+    key: 'inProgress',
+    title: 'In Progress',
+    icon: Clock,
+    iconBg: 'bg-warning-50',
+    iconColor: 'text-warning-600',
+    valueColor: 'text-warning-700',
+  },
+  {
+    key: 'todo',
+    title: 'To Do',
+    icon: Circle,
+    iconBg: 'bg-primary-50',
+    iconColor: 'text-primary-600',
+    valueColor: 'text-primary-700',
+  },
+];
 
 export default function StatsCards({ stats, loading }) {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <LoadingSkeleton type="stat" count={4} />
       </div>
     );
   }
 
   const safeStats = stats || { total: 0, completed: 0, inProgress: 0, todo: 0 };
-
-  const cards = [
-    {
-      title: 'Total Tasks',
-      value: safeStats.total,
-      icon: <ClipboardList size={24} />,
-      bg: 'bg-blue-100',
-      color: 'text-blue-600',
-      label: 'Total tracked'
-    },
-    {
-      title: 'Completed',
-      value: safeStats.completed,
-      icon: <CheckCircle2 size={24} />,
-      bg: 'bg-green-100',
-      color: 'text-green-600',
-      label: 'Tasks done'
-    },
-    {
-      title: 'In Progress',
-      value: safeStats.inProgress,
-      icon: <Clock size={24} />,
-      bg: 'bg-amber-100',
-      color: 'text-amber-600',
-      label: 'Actively working'
-    },
-    {
-      title: 'To Do',
-      value: safeStats.todo,
-      icon: <AlertCircle size={24} />,
-      bg: 'bg-purple-100',
-      color: 'text-purple-600',
-      label: 'Pending tasks'
-    }
-  ];
+  const total = safeStats.total || 1; // avoid division by zero
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      {cards.map((card, idx) => (
-        <Card key={idx} padding="md" className="flex items-center p-6">
-          <div className="flex-1">
-            <h3 className="text-sm font-medium text-gray-600 mb-1">{card.title}</h3>
-            <div className="text-3xl font-bold text-gray-900 mb-1">{card.value}</div>
-            <p className="text-xs text-gray-500">{card.label}</p>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {cards.map(({ key, title, icon: Icon, iconBg, iconColor, valueColor }) => {
+        const value = safeStats[key] || 0;
+        const pct = key === 'total' ? null : Math.round((value / total) * 100);
+
+        return (
+          <div key={key} className="card p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</span>
+              <div className={`w-8 h-8 rounded-lg ${iconBg} ${iconColor} flex items-center justify-center`}>
+                <Icon className="w-4 h-4" />
+              </div>
+            </div>
+            <p className={`text-2xl sm:text-3xl font-bold ${valueColor} tracking-tight`}>{value}</p>
+            {pct !== null && (
+              <p className="text-xs text-gray-400 mt-1">{pct}% of total</p>
+            )}
           </div>
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${card.bg} ${card.color}`}>
-            {card.icon}
-          </div>
-        </Card>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 export default function Register() {
   const navigate = useNavigate();
   const { register } = useAuth();
-  
+
   const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -25,11 +25,13 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
-    if (!validateName(formData.name)) newErrors.name = 'Name must be at least 2 characters';
-    if (!validateEmail(formData.email)) newErrors.email = 'Invalid email address';
-    if (!validatePassword(formData.password)) newErrors.password = 'Password must be at least 6 characters';
-    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
-    
+    const nameResult = validateName(formData.name);
+    if (nameResult && !nameResult.valid) newErrors.name = nameResult.message;
+    if (!validateEmail(formData.email)) newErrors.email = 'Please enter a valid email address';
+    const passResult = validatePassword(formData.password);
+    if (passResult && !passResult.valid) newErrors.password = passResult.message;
+    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords don\'t match';
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -40,41 +42,43 @@ export default function Register() {
       await register(formData.name, formData.email, formData.password);
       navigate('/dashboard');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to register');
+      toast.error(err.response?.data?.message || 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-6">
-      <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Create your account</h1>
-        <p className="text-gray-600">Start managing your tasks today</p>
+    <div>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Create your account</h1>
+        <p className="text-sm text-gray-500 mt-1.5">Get started with TaskFlow — it's free</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Full Name"
+          label="Full name"
           name="name"
           value={formData.name}
           onChange={handleChange}
           error={errors.name}
-          icon={<User className="w-5 h-5 text-gray-400" />}
-          placeholder="John Doe"
+          icon={User}
+          placeholder="Jane Smith"
+          autoComplete="name"
         />
 
         <Input
-          label="Email address"
+          label="Work email"
           name="email"
           type="email"
           value={formData.email}
           onChange={handleChange}
           error={errors.email}
-          icon={<Mail className="w-5 h-5 text-gray-400" />}
-          placeholder="you@example.com"
+          icon={Mail}
+          placeholder="you@company.com"
+          autoComplete="email"
         />
-        
+
         <Input
           label="Password"
           name="password"
@@ -82,29 +86,51 @@ export default function Register() {
           value={formData.password}
           onChange={handleChange}
           error={errors.password}
-          icon={<Lock className="w-5 h-5 text-gray-400" />}
-          placeholder="••••••••"
+          icon={Lock}
+          placeholder="Min. 6 characters"
+          hint="Must be at least 6 characters"
+          autoComplete="new-password"
         />
 
         <Input
-          label="Confirm Password"
+          label="Confirm password"
           name="confirmPassword"
           type="password"
           value={formData.confirmPassword}
           onChange={handleChange}
           error={errors.confirmPassword}
-          icon={<Lock className="w-5 h-5 text-gray-400" />}
-          placeholder="••••••••"
+          icon={Lock}
+          placeholder="Re-enter your password"
+          autoComplete="new-password"
         />
 
-        <Button type="submit" variant="primary" className="w-full mt-2" loading={isLoading}>
-          Register
-        </Button>
+        <div className="pt-1">
+          <Button type="submit" variant="primary" size="lg" className="w-full" loading={isLoading}>
+            Create account
+          </Button>
+        </div>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-600">
+      <p className="mt-5 text-center text-xs text-gray-400">
+        By signing up, you agree to our{' '}
+        <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors underline">Terms</a>
+        {' '}and{' '}
+        <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors underline">Privacy Policy</a>
+      </p>
+
+      {/* Divider */}
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-200" />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="px-3 bg-white text-gray-400">or</span>
+        </div>
+      </div>
+
+      <p className="text-center text-sm text-gray-500">
         Already have an account?{' '}
-        <Link to="/login" className="text-primary-600 hover:text-primary-700 font-medium">
+        <Link to="/login" className="font-medium text-primary-600 hover:text-primary-700 transition-colors">
           Sign in
         </Link>
       </p>

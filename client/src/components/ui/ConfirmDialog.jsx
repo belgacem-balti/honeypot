@@ -1,36 +1,35 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import Modal from './Modal';
 import Button from './Button';
 
-const ConfirmDialog = ({ isOpen, onClose, onConfirm, title, message, confirmText = 'Confirm', variant = 'danger' }) => {
-  const [loading, setLoading] = useState(false);
-
-  const handleConfirm = async () => {
-    setLoading(true);
-    try {
-      await onConfirm();
-    } finally {
-      setLoading(false);
-      onClose();
-    }
-  };
-
+const ConfirmDialog = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title = 'Confirm action',
+  message = 'Are you sure you want to continue? This action cannot be undone.',
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
+  variant = 'danger',
+  loading = false
+}) => {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
-      <div className="flex flex-col items-center text-center">
-        <div className={`p-3 rounded-full mb-4 ${variant === 'danger' ? 'bg-red-100 text-red-600' : 'bg-primary-100 text-primary-600'}`}>
-          <AlertTriangle className="w-6 h-6" />
+    <Modal isOpen={isOpen} onClose={onClose} size="sm">
+      <div className="text-center sm:text-left">
+        <div className="mx-auto sm:mx-0 w-11 h-11 flex items-center justify-center rounded-full bg-danger-50 mb-4">
+          <AlertTriangle className="w-5 h-5 text-danger-600" />
         </div>
-        <p className="text-sm text-gray-600 mb-6">{message}</p>
-        <div className="flex gap-3 w-full">
-          <Button variant="secondary" onClick={onClose} className="flex-1" disabled={loading}>
-            Cancel
-          </Button>
-          <Button variant={variant} onClick={handleConfirm} className="flex-1" loading={loading}>
-            {confirmText}
-          </Button>
-        </div>
+        <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+        <p className="text-sm text-gray-500 mt-2 leading-relaxed">{message}</p>
+      </div>
+      <div className="flex items-center justify-end gap-3 mt-6">
+        <Button variant="secondary" size="md" onClick={onClose} disabled={loading}>
+          {cancelLabel}
+        </Button>
+        <Button variant={variant} size="md" onClick={onConfirm} loading={loading}>
+          {confirmLabel}
+        </Button>
       </div>
     </Modal>
   );

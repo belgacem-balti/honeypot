@@ -1,36 +1,63 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
-const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
+const sizes = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-xl',
+};
+
+const Modal = ({ isOpen, onClose, title, description, size = 'md', children }) => {
+  const overlayRef = useRef(null);
+
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') onClose();
     };
     if (isOpen) {
-      window.addEventListener('keydown', handleEsc);
+      document.addEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'hidden';
     }
-    return () => window.removeEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = '';
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  const sizes = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-lg',
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={onClose} />
-      <div className={`relative bg-white rounded-2xl shadow-xl w-full ${sizes[size]} transform transition-all`}>
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-500 transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
+      onClick={(e) => e.target === overlayRef.current && onClose()}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-gray-950/40 backdrop-blur-sm" />
+
+      {/* Dialog */}
+      <div className={`relative w-full ${sizes[size]} bg-white rounded-2xl shadow-modal animate-scale-in`}>
+        {/* Header */}
+        {(title || true) && (
+          <div className="flex items-start justify-between p-5 pb-0">
+            <div>
+              {title && <h2 className="text-lg font-semibold text-gray-900">{title}</h2>}
+              {description && <p className="text-sm text-gray-500 mt-0.5">{description}</p>}
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 -m-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="p-5">
+          {children}
         </div>
-        <div className="p-6">{children}</div>
       </div>
     </div>
   );

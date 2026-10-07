@@ -1,21 +1,30 @@
 import React from 'react';
 
-const Badge = ({ variant = 'default', size = 'md', children, className = '' }) => {
-  const variants = {
-    success: 'bg-green-100 text-green-800',
-    warning: 'bg-yellow-100 text-yellow-800',
-    error: 'bg-red-100 text-red-800',
-    info: 'bg-blue-100 text-blue-800',
-    default: 'bg-gray-100 text-gray-800',
-  };
+const variants = {
+  success: 'bg-success-50 text-success-700 ring-1 ring-inset ring-success-600/10',
+  warning: 'bg-warning-50 text-warning-700 ring-1 ring-inset ring-warning-600/10',
+  error: 'bg-danger-50 text-danger-700 ring-1 ring-inset ring-danger-600/10',
+  info: 'bg-primary-50 text-primary-700 ring-1 ring-inset ring-primary-600/10',
+  default: 'bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10',
+};
 
-  const sizes = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-2.5 py-1 text-sm',
-  };
+const sizes = {
+  sm: 'badge-sm',
+  md: 'badge-md',
+};
 
+const Badge = ({ children, variant = 'default', size = 'sm', dot = false, className = '' }) => {
   return (
-    <span className={`inline-flex items-center rounded-full font-medium ${variants[variant]} ${sizes[size]} ${className}`}>
+    <span className={`badge ${variants[variant]} ${sizes[size]} ${className}`}>
+      {dot && (
+        <span className={`w-1.5 h-1.5 rounded-full ${
+          variant === 'success' ? 'bg-success-500' :
+          variant === 'warning' ? 'bg-warning-500' :
+          variant === 'error' ? 'bg-danger-500' :
+          variant === 'info' ? 'bg-primary-500' :
+          'bg-gray-400'
+        }`} />
+      )}
       {children}
     </span>
   );
