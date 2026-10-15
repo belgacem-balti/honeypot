@@ -7,6 +7,9 @@ import Button from '../components/ui/Button';
 import StatsCards from '../components/dashboard/StatsCards';
 import TaskChart from '../components/dashboard/TaskChart';
 import RecentTasks from '../components/dashboard/RecentTasks';
+import ProductivityScore from '../components/dashboard/ProductivityScore';
+import UpcomingDeadlines from '../components/dashboard/UpcomingDeadlines';
+import WeeklyProgress from '../components/dashboard/WeeklyProgress';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -50,9 +53,18 @@ export default function Dashboard() {
         <StatsCards stats={stats} loading={loading} />
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 opacity-0 animate-fade-in-up" style={{ animationDelay: '250ms' }}>
-        <TaskChart tasks={tasks} stats={stats} />
+      {/* Charts + Productivity row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 opacity-0 animate-fade-in-up" style={{ animationDelay: '250ms' }}>
+        <div className="lg:col-span-2">
+          <TaskChart tasks={tasks} stats={stats} />
+        </div>
+        <ProductivityScore stats={stats} />
+      </div>
+
+      {/* Weekly + Deadlines row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 opacity-0 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+        <WeeklyProgress tasks={tasks} />
+        <UpcomingDeadlines tasks={tasks} loading={loading} />
       </div>
 
       {/* Recent tasks */}

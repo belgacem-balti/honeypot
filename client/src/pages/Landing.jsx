@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Layers, BarChart3, Shield, Zap, Github, Twitter, CheckSquare, Star, Sparkles, TrendingUp, Users, Clock } from 'lucide-react';
+import { ArrowRight, Layers, BarChart3, Shield, Zap, Github, Twitter, CheckSquare, Star, Sparkles, TrendingUp, Users, Clock, Check, ChevronDown, MessageSquare, Slack, Globe, Lock } from 'lucide-react';
 import Button from '../components/ui/Button';
 
 const features = [
@@ -306,6 +306,162 @@ export default function Landing() {
               </AnimatedSection>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ─── TESTIMONIALS ─── */}
+      <section className="py-20 md:py-28 bg-gray-50/50">
+        <div className="page-container">
+          <AnimatedSection className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary-50 border border-primary-100 px-3 py-1 text-xs font-semibold text-primary-600 mb-4 uppercase tracking-wider">
+              Testimonials
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-950 tracking-tight">Loved by teams everywhere</h2>
+            <p className="text-gray-500 mt-3 max-w-lg mx-auto text-lg">See what our users have to say about TaskFlow.</p>
+          </AnimatedSection>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {[
+              { name: 'Jessica M.', role: 'Engineering Lead at Stripe', quote: 'TaskFlow replaced three tools for us. The dashboard alone saved our team 5 hours a week on status meetings.', stars: 5 },
+              { name: 'David L.', role: 'Product Manager at Vercel', quote: 'The cleanest task management UI I\'ve ever used. My team adopted it in a day — no training needed.', stars: 5 },
+              { name: 'Aisha K.', role: 'CTO at Buildspace', quote: 'We switched from Jira and never looked back. TaskFlow is fast, beautiful, and actually enjoyable to use.', stars: 5 },
+            ].map((t, i) => (
+              <AnimatedSection key={i} delay={i * 100}>
+                <div className="card p-6 h-full flex flex-col">
+                  <div className="flex items-center gap-1 mb-4">
+                    {Array.from({ length: t.stars }).map((_, j) => (
+                      <Star key={j} className="w-4 h-4 text-amber-400 fill-current" />
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-600 leading-relaxed flex-1">"{t.quote}"</p>
+                  <div className="mt-5 pt-4 border-t border-gray-100 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-100 to-primary-50 flex items-center justify-center">
+                      <span className="text-xs font-bold text-primary-600">{t.name.split(' ').map(n => n[0]).join('')}</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{t.name}</p>
+                      <p className="text-xs text-gray-400">{t.role}</p>
+                    </div>
+                  </div>
+                </div>
+              </AnimatedSection>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── PRICING ─── */}
+      <section id="pricing" className="py-20 md:py-28">
+        <div className="page-container">
+          <AnimatedSection className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary-50 border border-primary-100 px-3 py-1 text-xs font-semibold text-primary-600 mb-4 uppercase tracking-wider">
+              Pricing
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-950 tracking-tight">Simple, transparent pricing</h2>
+            <p className="text-gray-500 mt-3 max-w-lg mx-auto text-lg">Start free, upgrade when you need to.</p>
+          </AnimatedSection>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            {[
+              {
+                name: 'Free', price: '$0', period: '/month', description: 'Perfect for individuals', popular: false,
+                features: ['Up to 50 tasks', '1 team member', 'Basic dashboard', 'Email support', '1 GB storage'],
+              },
+              {
+                name: 'Pro', price: '$12', period: '/user/mo', description: 'Best for growing teams', popular: true,
+                features: ['Unlimited tasks', 'Up to 20 members', 'Advanced analytics', 'Priority support', '50 GB storage', 'Custom fields', 'API access'],
+              },
+              {
+                name: 'Enterprise', price: '$39', period: '/user/mo', description: 'For large organizations', popular: false,
+                features: ['Everything in Pro', 'Unlimited members', 'SSO & SAML', 'Audit logs', 'Dedicated support', 'Custom SLA', 'On-premise option'],
+              },
+            ].map((plan, i) => (
+              <AnimatedSection key={plan.name} delay={i * 100}>
+                <div className={`relative rounded-2xl p-6 flex flex-col h-full ${plan.popular ? 'bg-gray-950 text-white ring-2 ring-primary-500 shadow-glow' : 'card'}`}>
+                  {plan.popular && (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-sm">
+                      Most Popular
+                    </span>
+                  )}
+                  <div className="mb-6">
+                    <h3 className={`text-lg font-semibold ${plan.popular ? 'text-white' : 'text-gray-900'}`}>{plan.name}</h3>
+                    <p className={`text-sm mt-1 ${plan.popular ? 'text-gray-400' : 'text-gray-500'}`}>{plan.description}</p>
+                  </div>
+                  <div className="mb-6">
+                    <span className={`text-4xl font-extrabold tracking-tight ${plan.popular ? 'text-white' : 'text-gray-900'}`}>{plan.price}</span>
+                    <span className={`text-sm ${plan.popular ? 'text-gray-400' : 'text-gray-500'}`}>{plan.period}</span>
+                  </div>
+                  <ul className="space-y-3 mb-8 flex-1">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-center gap-2.5 text-sm">
+                        <Check className={`w-4 h-4 flex-shrink-0 ${plan.popular ? 'text-primary-400' : 'text-primary-600'}`} />
+                        <span className={plan.popular ? 'text-gray-300' : 'text-gray-600'}>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link to="/register" className={`block text-center py-2.5 px-4 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    plan.popular
+                      ? 'bg-primary-600 text-white hover:bg-primary-500 shadow-[0_0_16px_rgba(79,70,229,0.3)]'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}>
+                    Get started
+                  </Link>
+                </div>
+              </AnimatedSection>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── INTEGRATIONS ─── */}
+      <section className="py-20 border-t border-gray-100 bg-gray-50/30">
+        <div className="page-container">
+          <AnimatedSection className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-950 tracking-tight mb-3">Integrates with your stack</h2>
+            <p className="text-gray-500 max-w-md mx-auto">Connect TaskFlow with the tools your team already uses.</p>
+          </AnimatedSection>
+          <div className="flex flex-wrap items-center justify-center gap-4 max-w-3xl mx-auto">
+            {[
+              { name: 'Slack', icon: MessageSquare }, { name: 'GitHub', icon: Github }, { name: 'Jira', icon: Globe },
+              { name: 'Notion', icon: Layers }, { name: 'Figma', icon: Sparkles }, { name: 'Linear', icon: BarChart3 },
+              { name: 'Vercel', icon: Zap }, { name: 'Auth0', icon: Lock },
+            ].map(({ name, icon: Icon }, i) => (
+              <AnimatedSection key={name} delay={i * 50}>
+                <div className="flex items-center gap-2.5 px-5 py-3 rounded-xl bg-white border border-gray-200/80 shadow-xs hover:shadow-card hover:-translate-y-0.5 transition-all duration-200 cursor-default">
+                  <Icon className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm font-medium text-gray-700">{name}</span>
+                </div>
+              </AnimatedSection>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── FAQ ─── */}
+      <section className="py-20 md:py-28">
+        <div className="page-container max-w-3xl">
+          <AnimatedSection className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-950 tracking-tight">Frequently asked questions</h2>
+          </AnimatedSection>
+          <AnimatedSection>
+            <div className="space-y-3">
+              {[
+                { q: 'Is TaskFlow really free?', a: 'Yes! Our free plan includes up to 50 tasks and is free forever. No credit card required to sign up.' },
+                { q: 'Can I import from other tools?', a: 'Absolutely. We support CSV import and direct integrations with Jira, Trello, Asana, and Linear.' },
+                { q: 'Is my data secure?', a: 'We use end-to-end encryption, SOC 2 compliance, and enterprise-grade security. Your data is always safe with us.' },
+                { q: 'Do you offer a self-hosted option?', a: 'Yes, our Enterprise plan includes on-premise deployment with Docker. Contact our sales team for details.' },
+                { q: 'What happens if I exceed my plan limits?', a: 'We\'ll notify you and give you time to upgrade. We never delete your data or lock you out without warning.' },
+              ].map((faq, i) => (
+                <details key={i} className="group card overflow-hidden">
+                  <summary className="flex items-center justify-between cursor-pointer p-5 text-sm font-semibold text-gray-900 hover:bg-gray-50/70 transition-colors">
+                    {faq.q}
+                    <ChevronDown className="w-4 h-4 text-gray-400 transition-transform duration-200 group-open:rotate-180" />
+                  </summary>
+                  <div className="px-5 pb-5 text-sm text-gray-500 leading-relaxed -mt-1">{faq.a}</div>
+                </details>
+              ))}
+            </div>
+          </AnimatedSection>
         </div>
       </section>
 
