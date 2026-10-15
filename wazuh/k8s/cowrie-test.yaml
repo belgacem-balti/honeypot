@@ -1,0 +1,37 @@
+# Pod Cowrie de TEST : vérifie la chaîne logs → /var/log/honeypotx/cowrie → agent Wazuh.
+# Le déploiement définitif de Cowrie appartient au bloc honeypots.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: honeypots
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cowrie-test
+  namespace: honeypots
+  labels:
+    app: cowrie
+    honeypotx/role: test
+spec:
+  containers:
+    - name: cowrie
+      image: cowrie/cowrie:3.1.2
+      ports:
+        - name: ssh
+          containerPort: 2222
+        - name: telnet
+          containerPort: 2223
+      resources:
+        requests: { cpu: 100m, memory: 128Mi }
+        limits:   { cpu: 500m, memory: 256Mi }
+      volumeMounts:
+        # Cowrie écrit cowrie.json (format JSON lu par Wazuh) dans ce dossier.
+        # Droits : réglés par minikube mount --uid=999 --gid=999 (pas de chown)
+        - name: cowrie-logs
+          mountPath: /cowrie/cowrie-git/var/log/cowrie
+  volumes:
+    - name: cowrie-logs
+      hostPath:
+        path: /var/log/honeypotx/cowrie
+        type: DirectoryOrCreate
