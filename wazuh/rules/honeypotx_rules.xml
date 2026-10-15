@@ -1,0 +1,127 @@
+<!--
+  HoneypotX : règles Cowrie (SSH)
+  Source : /var/log/honeypotx/cowrie/cowrie.json (log_format json, décodeur json natif)
+  Plage d'IDs : 100100-100149 Cowrie, 100150-100199 enrichissement (MISP)
+-->
+<group name="honeypotx,cowrie,">
+
+  <!-- Base : tout événement Cowrie (pas d'alerte, sert de parent) -->
+  <rule id="100100" level="0">
+    <decoded_as>json</decoded_as>
+    <field name="eventid">^cowrie.</field>
+    <description>HoneypotX Cowrie : événement $(eventid)</description>
+  </rule>
+
+  <!-- Connexion entrante : tout contact avec un honeypot est suspect -->
+  <rule id="100101" level="5">
+    <if_sid>100100</if_sid>
+    <field name="eventid">^cowrie.session.connect$</field>
+    <description>HoneypotX Cowrie : connexion $(protocol) depuis $(src_ip)</description>
+    <group>connection_attempt,</group>
+  </rule>
+
+  <!-- Échec d'authentification -->
+  <rule id="100102" level="5">
+    <if_sid>100100</if_sid>
+    <field name="eventid">^cowrie.login.failed$</field>
+    <description>HoneypotX Cowrie : échec de connexion $(username)/$(password) depuis $(src_ip)</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failed,</group>
+  </rule>
+
+  <!-- Authentification réussie : l'attaquant est « dans » le honeypot -->
+  <rule id="100103" level="10">
+    <if_sid>100100</if_sid>
+    <field name="eventid">^cowrie.login.success$</field>
+    <description>HoneypotX Cowrie : connexion réussie $(username)/$(password) depuis $(src_ip)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>authentication_success,</group>
+  </rule>
+
+  <!-- Brute force : >= 5 échecs en 60 s depuis la même src_ip -->
+  <rule id="100104" level="10" frequency="5" timeframe="60">
+    <if_matched_sid>100102</if_matched_sid>
+    <same_field>src_ip</same_field>
+    <description>HoneypotX Cowrie : brute force SSH depuis $(src_ip) (5 échecs ou plus en 60 s)</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+    <group>authentication_failures,</group>
+  </rule>
+
+  <!-- Commande saisie dans le shell simulé -->
+  <rule id="100105" level="8">
+    <if_sid>100100</if_sid>
+    <field name="eventid">^cowrie.command.input$</field>
+    <description>HoneypotX Cowrie : commande exécutée depuis $(src_ip) : $(input)</description>
+    <mitre>
+      <id>T1059.004</id>
+    </mitre>
+  </rule>
+
+  <!-- Commandes spécialisées (enfants de 100105, la première qui correspond l'emporte) -->
+  <rule id="100106" level="12">
+    <if_sid>100105</if_sid>
+    <field name="input" type="pcre2">(?i)\b(wget|curl|tftp|ftpget|scp|sftp)\b</field>
+    <description>HoneypotX Cowrie : téléchargement d'outil depuis $(src_ip) : $(input)</description>
+    <mitre>
+      <id>T1105</id>
+      <id>T1059.004</id>
+    </mitre>
+  </rule>
+
+  <rule id="100107" level="10">
+    <if_sid>100105</if_sid>
+    <field name="input" type="pcre2">(?i)/etc/(passwd|shadow|group)\b|(?:^|[;&amp;|]\s*|\bsudo\s+)(whoami|id|who|w|last|lastlog|getent\s+passwd)(?=\s|$|[;&amp;|])</field>
+    <description>HoneypotX Cowrie : découverte des comptes depuis $(src_ip) : $(input)</description>
+    <mitre>
+      <id>T1087</id>
+      <id>T1059.004</id>
+    </mitre>
+  </rule>
+
+  <rule id="100108" level="10">
+    <if_sid>100105</if_sid>
+    <field name="input" type="pcre2">(?i)(?:^|[;&amp;|]\s*|\bsudo\s+)(uname|hostname|hostnamectl|lscpu|nproc|free|df|uptime|lsb_release|dmidecode)(?=\s|$|[;&amp;|])|/proc/(cpuinfo|meminfo|version)|/etc/(os-release|issue)</field>
+    <description>HoneypotX Cowrie : reconnaissance système depuis $(src_ip) : $(input)</description>
+    <mitre>
+      <id>T1082</id>
+      <id>T1059.004</id>
+    </mitre>
+  </rule>
+
+  <!-- Fichier téléchargé ou déposé par l'attaquant (événement Cowrie dédié) -->
+  <rule id="100109" level="12">
+    <if_sid>100100</if_sid>
+    <field name="eventid">^cowrie.session.file_download$|^cowrie.session.file_upload$</field>
+    <description>HoneypotX Cowrie : transfert de fichier depuis $(src_ip) ($(url))</description>
+    <mitre>
+      <id>T1105</id>
+    </mitre>
+  </rule>
+
+  <!-- Fin de session (trace pour corrélation et durée) -->
+  <rule id="100110" level="3">
+    <if_sid>100100</if_sid>
+    <field name="eventid">^cowrie.session.closed$</field>
+    <description>HoneypotX Cowrie : session fermée depuis $(src_ip) après $(duration_ms) ms</description>
+  </rule>
+
+  <!--
+    Enrichissement MISP : la src_ip est dans la liste CDB etc/lists/misp-ioc-ip
+    (générée par misp/misp_to_cdb.py). Seulement sur session.connect (100101) :
+    un enfant de 100102 empêcherait le comptage du brute force (100104),
+    et un enfant de 100103/100105 masquerait le mapping MITRE de ces règles.
+  -->
+  <rule id="100150" level="13">
+    <if_sid>100101</if_sid>
+    <list field="src_ip" lookup="address_match_key">etc/lists/misp-ioc-ip</list>
+    <description>HoneypotX Cowrie : connexion depuis une IP connue de MISP ($(src_ip))</description>
+    <group>misp_ioc,threat_intel,</group>
+  </rule>
+
+</group>

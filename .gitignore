@@ -33,3 +33,9 @@ coverage/
 # Local database
 .pgdata/
 
+
+# Wazuh / HoneypotX : secrets, sauvegardes, logs Cowrie (dist/ et *.log déjà ignorés plus haut)
+*.env
+misp.env
+*.tgz
+cowrie.json*
