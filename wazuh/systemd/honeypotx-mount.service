@@ -1,0 +1,16 @@
+[Unit]
+Description=HoneypotX - montage 9p /var/log/honeypotx dans le noeud minikube
+After=docker.service network-online.target
+
+[Service]
+Type=simple
+Environment=PATH=/usr/local/bin:/usr/bin:/bin:/snap/bin
+# Attend que le cluster minikube soit démarré (minikube n'est pas une unit systemd)
+ExecStartPre=/bin/sh -c 'until /usr/local/bin/minikube status --format "{{.Host}}" 2>/dev/null | grep -q Running; do sleep 10; done'
+ExecStart=/usr/local/bin/minikube mount /var/log/honeypotx:/var/log/honeypotx --uid=999 --gid=999
+Restart=always
+RestartSec=15
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=default.target

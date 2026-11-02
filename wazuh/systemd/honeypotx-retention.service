@@ -1,0 +1,8 @@
+[Unit]
+Description=HoneypotX - rétention des logs tournés des honeypots (gzip > 1 j, suppression > 7 j)
+
+[Service]
+Type=oneshot
+# Ne touche jamais aux fichiers actifs (*.json) : seulement les fichiers tournés *.json.AAAA-MM-JJ[.gz]
+ExecStart=/usr/bin/find /var/log/honeypotx -type f -name '*.json.[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' -mtime +0 -exec /usr/bin/gzip -9 {} +
+ExecStart=/usr/bin/find /var/log/honeypotx -type f -name '*.json.[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*' -mtime +7 -print -delete
