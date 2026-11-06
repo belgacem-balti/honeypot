@@ -11,41 +11,54 @@ jobs:
       contents: write
       id-token: write
       attestations: write
-    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Pull images
         run: |
-          docker pull ghcr.io/${{ github.repository }}-client:latest
-          docker pull ghcr.io/${{ github.repository }}-server:latest
-      
+          docker pull "ghcr.io/${{ github.repository }}-client:latest"
+          docker pull "ghcr.io/${{ github.repository }}-server:latest"
+
       - name: Get image digests
         id: digests
         run: |
-          CLIENT_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "ghcr.io/${{ github.repository }}-client:latest" | cut -d'@' -f2)
-          SERVER_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "ghcr.io/${{ github.repository }}-server:latest" | cut -d'@' -f2)
-          echo "client=\"${CLIENT_DIGEST}\"" >> "$GITHUB_OUTPUT"
-          echo "server=\"${SERVER_DIGEST}\"" >> "$GITHUB_OUTPUT"
-      
+          set -euo pipefail
+          client_ref="ghcr.io/${{ github.repository }}-client:latest"
+          server_ref="ghcr.io/${{ github.repository }}-server:latest"
+          client_full="$(docker inspect --format='{{index .RepoDigests 0}}' "$client_ref")"
+          server_full="$(docker inspect --format='{{index .RepoDigests 0}}' "$server_ref")"
+          client_digest="${client_full##*@}"
+          server_digest="${server_full##*@}"
+          if [[ ! "$client_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Unexpected client digest: ${client_full}" >&2
+            exit 1
+          fi
+          if [[ ! "$server_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Unexpected server digest: ${server_full}" >&2
+            exit 1
+          fi
+          echo "client=${client_digest}" >> "$GITHUB_OUTPUT"
+          echo "server=${server_digest}" >> "$GITHUB_OUTPUT"
+
       - name: Generate SBOMs
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
             aquasec/trivy:0.50.1 image --format cyclonedx \
-            --output sbom-client.json ghcr.io/${{ github.repository }}-client:latest
-          
+            --output sbom-client.json \
+            "ghcr.io/${{ github.repository }}-client:latest"
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
             aquasec/trivy:0.50.1 image --format cyclonedx \
-            --output sbom-server.json ghcr.io/${{ github.repository }}-server:latest
-      
+            --output sbom-server.json \
+            "ghcr.io/${{ github.repository }}-server:latest"
+
       - name: Attest client SBOM
         uses: actions/attest-sbom@v1
         with:
@@ -53,7 +66,7 @@ jobs:
           subject-digest: ${{ steps.digests.outputs.client }}
           sbom-path: sbom-client.json
           push-to-registry: true
-      
+
       - name: Attest server SBOM
         uses: actions/attest-sbom@v1
         with:
@@ -61,7 +74,7 @@ jobs:
           subject-digest: ${{ steps.digests.outputs.server }}
           sbom-path: sbom-server.json
           push-to-registry: true
-      
+
       - name: Upload SBOM artifacts
         uses: actions/upload-artifact@v4
         with:

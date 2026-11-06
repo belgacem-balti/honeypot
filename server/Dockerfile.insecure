@@ -1,0 +1,48 @@
+# INTENTIONALLY INSECURE - For DevSecOps testing only
+# Vulnerabilities demonstrated:
+# 1. Old/vulnerable base image with known CVEs
+# 2. Running as root user
+# 3. Installing unnecessary tools (attack surface)
+# 4. World-writable permissions
+# 5. No HEALTHCHECK
+# 6. Hardcoded secrets in ENV
+# 7. No .dockerignore
+
+FROM node:14.15.0
+
+# INSECURE: Installing unnecessary tools that increase attack surface
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    netcat \
+    nmap \
+    vim \
+    git \
+    ssh \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# INSECURE: Copying everything including sensitive files
+COPY . .
+
+# INSECURE: World-writable permissions
+RUN chmod -R 777 /app
+
+# INSECURE: Hardcoded secrets in Dockerfile
+ENV JWT_SECRET=hardcoded-jwt-secret-key-12345
+ENV DB_PASSWORD=SuperSecret123
+ENV NODE_ENV=production
+ENV AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+ENV AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+RUN npm install --production
+
+# INSECURE: Running as root (default)
+# No USER directive
+
+EXPOSE 3000
+
+# INSECURE: No HEALTHCHECK
+
+CMD ["node", "server.js"]

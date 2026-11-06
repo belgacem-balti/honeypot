@@ -1,0 +1,62 @@
+# INTENTIONALLY INSECURE - For DevSecOps testing only
+# Vulnerabilities demonstrated:
+# 1. Hardcoded passwords in plain text
+# 2. Privileged mode containers
+# 3. Unnecessary port exposure
+# 4. Host filesystem mounting
+# 5. No resource limits
+# 6. No network isolation
+# 7. Disabled security options
+
+version: '3.8'
+
+services:
+  # INSECURE: Privileged container with hardcoded creds
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.insecure
+    ports:
+      - "3000:3000"
+      - "9229:9229"  # INSECURE: Debug port exposed
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:SuperSecret123@db:5432/taskflow
+      - JWT_SECRET=hardcoded-jwt-secret-key-12345
+      - AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+      - AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+    volumes:
+      - /:/host-root:rw  # INSECURE: Host root filesystem mounted
+      - /var/run/docker.sock:/var/run/docker.sock  # INSECURE: Docker socket exposed
+    privileged: true  # INSECURE: Full host access
+    security_opt:
+      - no-new-privileges:false  # INSECURE: Privilege escalation allowed
+    # INSECURE: No resource limits
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.insecure
+    ports:
+      - "80:80"
+      - "443:443"
+    privileged: true  # INSECURE: Privileged mode
+
+  db:
+    image: postgres:11  # INSECURE: Old PostgreSQL version
+    ports:
+      - "5432:5432"  # INSECURE: DB port exposed to host
+    environment:
+      - POSTGRES_PASSWORD=SuperSecret123  # INSECURE: Hardcoded password
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=taskflow
+    volumes:
+      - /tmp/postgres-data:/var/lib/postgresql/data  # INSECURE: /tmp storage
+    privileged: true
+
+  # INSECURE: Redis with no password
+  redis:
+    image: redis:5  # INSECURE: Old Redis version
+    ports:
+      - "6379:6379"  # INSECURE: Redis exposed without auth
+    command: redis-server --requirepass ""  # INSECURE: No password

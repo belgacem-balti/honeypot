@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Deployment environment'
+        description: Deployment environment
         required: true
         type: choice
         options:
@@ -21,11 +21,10 @@ jobs:
     name: Deploy to ${{ github.event.inputs.environment || 'staging' }}
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || 'staging' }}
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Create .env file
         run: |
           cat > server/.env << EOF
@@ -36,7 +35,7 @@ jobs:
           CLIENT_URL=http://localhost
           NODE_ENV=production
           EOF
-      
+
       - name: Deploy with docker-compose
         run: |
           docker compose down -v
@@ -44,25 +43,25 @@ jobs:
           docker compose up -d
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
       - name: Wait for services
         run: sleep 20
-      
+
       - name: Health check
         run: |
           curl -f http://localhost:5000/api/health || exit 1
           curl -f http://localhost || exit 1
-      
+
       - name: Run smoke tests
         run: |
-          # Test registration
+          SMOKE_EMAIL="smoke-$(date +%s)@example.com"
           REGISTER_RESPONSE=$(curl -s -X POST http://localhost:5000/api/auth/register \
             -H "Content-Type: application/json" \
-            -d '{"name":"Test User","email":"test@example.com","password":"password123"}')
+            -d "{\"name\":\"Test User\",\"email\":\"${SMOKE_EMAIL}\",\"password\":\"password123\"}")
           echo "Register response: $REGISTER_RESPONSE"
-          
-          # Test login
           LOGIN_RESPONSE=$(curl -s -X POST http://localhost:5000/api/auth/login \
             -H "Content-Type: application/json" \
-            -d '{"email":"test@example.com","password":"password123"}')
+            -d "{\"email\":\"${SMOKE_EMAIL}\",\"password\":\"password123\"}")
           echo "Login response: $LOGIN_RESPONSE"

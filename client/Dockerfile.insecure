@@ -1,0 +1,39 @@
+# INTENTIONALLY INSECURE - For DevSecOps testing only
+# Vulnerabilities:
+# 1. Using 'latest' tag (unpredictable builds)
+# 2. Running as root
+# 3. Debug tools included in production image
+# 4. No multi-stage build (dev deps in prod)
+# 5. Missing security headers in nginx
+
+FROM node:latest
+
+# INSECURE: Debug tools in production image
+RUN apt-get update && apt-get install -y \
+    curl wget vim git strace tcpdump \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY package*.json ./
+
+# INSECURE: Installing all deps including dev dependencies in production
+RUN npm install
+
+COPY . .
+
+RUN npm run build
+
+# INSECURE: Using nginx:latest
+FROM nginx:latest
+
+# INSECURE: Running as root (no USER directive)
+
+COPY --from=0 /app/dist /usr/share/nginx/html
+
+# INSECURE: No health check
+# INSECURE: No security headers configured
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

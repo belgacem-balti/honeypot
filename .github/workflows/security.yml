@@ -2,55 +2,55 @@ name: Scheduled Security Scans
 
 on:
   schedule:
-    - cron: '0 0 * * 1'  # Every Monday at midnight UTC
-  workflow_dispatch:  # Manual trigger
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
 
 jobs:
   trivy-repo-scan:
     name: Full Repository Scan
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Run Trivy repository scan
         uses: aquasecurity/trivy-action@master
         with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-      
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: "0"
+
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: trivy-results.sarif
 
   zap-scan:
     name: OWASP ZAP DAST
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      # Deploy app locally for scanning
+
       - name: Start application
         run: |
           docker compose up -d
-          sleep 30  # Wait for services to be ready
+          sleep 30
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+
       - name: Run ZAP baseline scan
+        continue-on-error: true
         run: |
           docker run --rm --network=host \
             -v "$(pwd):/zap/wrk:rw" \
             owasp/zap2docker-stable:2.14.0 \
             zap-baseline.py -t http://localhost -J zap-report.json -r zap-report.html
-      
+
       - name: Upload ZAP results
         uses: actions/upload-artifact@v4
         if: always()
@@ -60,7 +60,7 @@ jobs:
             zap-report.json
             zap-report.html
           retention-days: 30
-      
+
       - name: Shutdown application
         if: always()
         run: docker compose down -v

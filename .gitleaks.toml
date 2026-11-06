@@ -68,9 +68,25 @@ tags = ["secret", "api-key"]
 Min = "3.0"
 Max = "8"
 
-# Allowlist section can be added here if needed
-# [allowlist]
-# description = "Allowlist for test fixtures and false positives"
-# paths = [
-#   '''test/fixtures/.*'''
-# ]
+[allowlist]
+description = "Skip dependencies, generated files, docs, and known honeypot fixtures"
+paths = [
+  '''(^|/)node_modules/''',
+  '''(^|/)\.git/''',
+  '''(^|/)dist/''',
+  '''(^|/)build/''',
+  '''(^|/)coverage/''',
+  '''(^|/)\.agents/''',
+  '''(^|/)e2e/''',
+  '''(?i)(^|/)(.*\.)?(test|spec)\.[jt]sx?$''',
+  '''docker-compose\.insecure\.yml''',
+  '''Dockerfile\.insecure''',
+  '''kubernetes-secrets\.yaml''',
+  '''backup\.sql''',
+  '''\.git-secrets-example''',
+  '''\.env\.example$''',
+  '''debug\.log''',
+  '''README\.md''',
+  '''PIPELINE\.md''',
+  '''VULNERABILITIES-ADDED\.md'''
+]

@@ -2,9 +2,9 @@
 # This file defines the scan behavior for the DevSecOps pipeline
 
 scan:
-  security-checks:
+  scanners:
     - vuln
-    - config
+    - misconfig
     - secret
   skip-files:
     - node_modules/**
@@ -12,9 +12,15 @@ scan:
     - build/**
     - coverage/**
     - .git/**
+  skip-dirs:
+    - node_modules
+    - .git
+    - dist
+    - build
+    - coverage
 
-vulnerability:
-  type:
+pkg:
+  types:
     - os
     - library
 

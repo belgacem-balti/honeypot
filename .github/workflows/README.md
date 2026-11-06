@@ -35,12 +35,12 @@ Builds, tests, scans images, and pushes to registry (runs only if `security-scan
 Image scan results and SBOMs are uploaded as artifacts (90-day retention).
 
 **Fail Conditions:**
-- Any secrets detected by Gitleaks
-- HIGH or CRITICAL vulnerabilities in npm audit
-- CRITICAL or HIGH vulnerabilities in Trivy filesystem scans
-- CRITICAL or HIGH vulnerabilities in Trivy image scans
-- Semgrep ERROR-level findings
 - Test failures
+- Docker build failures
+
+This repository is a honeypot. Gitleaks, npm audit, Trivy, and Semgrep still run and upload artifacts, but they do not fail the job on expected findings (`continue-on-error` / Trivy `exit-code: 0`). Set Trivy `exit-code` to `1` if you want a blocking gate.
+
+**Images:** CI builds `client/Dockerfile.hardened` and `server/Dockerfile.hardened` (non-root, health checks, security headers).
 
 ---
 
@@ -130,8 +130,8 @@ Configure these secrets in **Settings → Secrets and variables → Actions**:
 | `JWT_SECRET` | JWT signing key | security.yml, deploy.yml | 64-char random hex |
 | `DATABASE_URL` | PostgreSQL connection string | security.yml, deploy.yml | `postgresql://user:pass@host:5432/db` |
 | `POSTGRES_PASSWORD` | Database root password | deploy.yml | Strong random password |
-| `TEST_DATABASE_URL` | Test DB connection (optional) | ci.yml (tests) | `postgresql://test:test@localhost:5432/testdb` |
-| `TEST_JWT_SECRET` | Test JWT secret | ci.yml (tests) | `test_secret_key` |
+| `TEST_DATABASE_URL` | Unused | Server Jest tests mock Prisma; no CI Postgres service is required | n/a |
+| `TEST_JWT_SECRET` | Optional JWT for tests | ci.yml (tests fall back to a local dummy) | `test_secret_key` |
 | `GITLEAKS_LICENSE` | Gitleaks Pro license (optional) | ci.yml | Pro license key |
 
 **Generate JWT_SECRET:**
@@ -255,13 +255,13 @@ docker run --rm -v "${PWD}:/repo" rhysd/actionlint:latest -verbose /repo/.github
 - Add CVEs to `.trivyignore` if risk is accepted (requires approval)
 
 **4. Tests fail in CI but pass locally**
-- Check environment variables in workflow (`TEST_DATABASE_URL`, `TEST_JWT_SECRET`)
-- Ensure test database is accessible or mocked properly
+- Server tests mock Prisma and do not need Postgres
+- `JWT_SECRET` is set in the workflow; a dummy fallback exists if `TEST_JWT_SECRET` is unset
 - Review test logs in workflow artifacts
 
 **5. Docker build fails**
-- Verify Dockerfiles exist in `client/` and `server/`
-- Check for syntax errors in Dockerfiles
+- CI uses `client/Dockerfile.hardened` and `server/Dockerfile.hardened`
+- Check for syntax errors in those Dockerfiles
 - Ensure dependencies are correctly specified in `package.json`
 
 **6. Deployment health checks fail**
