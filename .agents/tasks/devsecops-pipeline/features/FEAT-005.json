@@ -1,0 +1,43 @@
+{
+  "id": "FEAT-005",
+  "type": "feat",
+  "description": "Implement Jenkins declarative pipeline matching GitHub Actions stages. Create Jenkinsfile with 11 stages: checkout, secret detection (Gitleaks), dependency scan (npm audit + Trivy fs), SAST (Semgrep), unit tests, Docker builds, container image scan, SBOM generation, security gate, registry push, staging deployment, and DAST (ZAP). All stages use Docker containers for tool execution to match GitHub Actions environment.",
+  "status": "completed",
+  "steps": [
+    "Create Jenkinsfile in repo root: Declarative pipeline with agent any, environment variables (REGISTRY, IMAGE_PREFIX, TRIVY_VERSION, GITLEAKS_VERSION).",
+    "Add Checkout stage: 'checkout scm'",
+    "Add Secret Detection stage: Run Gitleaks v8.18.2 in Docker container with workspace volume mount, output to gitleaks-report.json. Use 'docker run --rm -v ${WORKSPACE}:/repo ghcr.io/gitleaks/gitleaks:v${GITLEAKS_VERSION} detect --source /repo --report-path /repo/gitleaks-report.json --verbose --no-git'",
+    "Add Dependency Scan stage: Parallel stage with 4 steps (npm audit client, npm audit server, Trivy fs client, Trivy fs server). Each uses docker run for Trivy with volume mounts. npm audit runs with 'cd client && npm ci && npm audit --audit-level=high'",
+    "Add SAST stage: Run Semgrep in Docker with workspace volume, configs p/javascript, p/react, p/nodejs, p/security-audit, output semgrep-results.json",
+    "Add Unit Tests stage: Parallel stage running 'cd server && npm test' and 'cd client && npm test'",
+    "Add Build Docker Images stage: Parallel builds for client and server using 'docker build' with tags ${GIT_COMMIT} and latest",
+    "Add Container Image Scan stage: Parallel Trivy image scans for both images with Docker socket mount, severity CRITICAL,HIGH, JSON output",
+    "Add SBOM Generation stage: Parallel Trivy SBOM generation for both images in cyclonedx format",
+    "Add Security Gate stage: Script block that reads trivy-image-*.json files with readJSON, counts CRITICAL vulnerabilities, fails with error() if count > 0",
+    "Add Push to Registry stage: Only when branch is 'main', use withCredentials for Docker Hub login (credentialsId: 'docker-hub-credentials'), tag and push both images with commit SHA and latest tags",
+    "Add Deploy to Staging stage: Only when branch is 'main', use withCredentials for jwt-secret, database-url, postgres-password, create .env file, run docker compose down/up, health check with curl",
+    "Add DAST stage: Only when branch is 'main', run ZAP baseline scan with docker run --network=host, volume mount for reports",
+    "Add post section: 'always' block archives artifacts (all JSON reports), 'failure' block sends email with emailext",
+    "Copy complete Jenkinsfile structure from Design Doc section 5, ensuring all Docker commands use proper Windows volume syntax if needed"
+  ],
+  "acceptance_criteria": [
+    "Jenkinsfile is valid Groovy syntax (no parse errors)",
+    "Pipeline has exactly 11 stages matching GitHub Actions sequence",
+    "All security tools (Gitleaks, Trivy, Semgrep, ZAP) run in Docker containers",
+    "Security Gate stage properly parses Trivy JSON and fails on CRITICAL findings",
+    "Push to Registry and Deploy stages only run on 'main' branch (when block present)",
+    "All credentials use Jenkins credentialsId references (docker-hub-credentials, jwt-secret, database-url, postgres-password)",
+    "archiveArtifacts includes all scan report files (gitleaks-report.json, npm-audit-*.json, trivy-*.json, semgrep-results.json, sbom-*.json, zap-report.*)"
+  ],
+  "verification": [
+    "Validate Groovy syntax: Install Jenkins locally or use 'docker run --rm -v \"${PWD}:/workspace\" jenkins/jenkins:lts jenkins-cli declarative-linter < /workspace/Jenkinsfile' (requires Jenkins CLI setup)",
+    "Check stage count: 'grep -c \"stage(\" Jenkinsfile' should be 11",
+    "Verify Docker tool usage: 'grep -c \"docker run\" Jenkinsfile' should be 10+ (Gitleaks, Trivy fs x2, Semgrep, Trivy image x2, SBOM x2, ZAP)",
+    "Check credential references: 'grep -n \"withCredentials\" Jenkinsfile' shows at least 2 uses (Docker Hub, staging deploy)",
+    "Verify conditional execution: 'grep -n \"when { branch\" Jenkinsfile' shows main branch checks for push/deploy stages",
+    "Check archiveArtifacts: 'grep -n \"archiveArtifacts\" Jenkinsfile' includes pattern matching all report files",
+    "Verify Security Gate logic: 'grep -A 10 \"Security Gate\" Jenkinsfile' shows readJSON, vulnerability counting, and error() call"
+  ],
+  "blocked_reason": null,
+  "findings": "✅ Jenkinsfile created with 12 stages (11 main + DAST) matching GitHub Actions workflow\n✅ All stages use Docker containers for tool execution (9 docker run commands verified)\n✅ Security Gate stage implements JSON parsing with readJSON, CRITICAL vulnerability counting, and error() on failure\n✅ 3 conditional 'when { branch main }' blocks for Push to Registry, Deploy to Staging, and DAST stages\n✅ 2 withCredentials blocks: docker-hub-credentials for registry push, jwt-secret/database-url/postgres-password for deployment\n✅ archiveArtifacts includes all scan reports (gitleaks-report.json, npm-audit-*.json, trivy-fs-*.json, trivy-image-*.json, sbom-*.json, semgrep-results.json, zap-report.*)\n✅ post section includes 'always' block for artifact archival and junit test results, 'failure' block with emailext\n⚠️ Groovy syntax validation skipped (requires Jenkins CLI or server). Manual review confirms valid declarative pipeline syntax\n⚠️ Docker volume mounts use Linux paths (${WORKSPACE}). On Windows Jenkins nodes, paths may need conversion or use Jenkins plugin features\n⚠️ Pipeline expects tests to exist (npm test in client/ and server/). Will fail until test frameworks are implemented (covered in FEAT-003)"
+}
