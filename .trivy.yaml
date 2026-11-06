@@ -29,7 +29,4 @@ severity:
 db:
   skip-update: false
 
-cache:
-  clear: false
-
 timeout: 10m0s

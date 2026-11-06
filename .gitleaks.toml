@@ -68,13 +68,9 @@ tags = ["secret", "api-key"]
 Min = "3.0"
 Max = "8"
 
-[allowlist]
-description = "Allowlist for test fixtures and false positives"
-paths = [
-  # Add paths to ignore, e.g., test files with mock credentials
-  # '''test/fixtures/.*'''
-]
-regexes = [
-  # Add regex patterns to ignore
-  # '''example\.com'''
-]
+# Allowlist section can be added here if needed
+# [allowlist]
+# description = "Allowlist for test fixtures and false positives"
+# paths = [
+#   '''test/fixtures/.*'''
+# ]
