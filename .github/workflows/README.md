@@ -76,7 +76,8 @@ Dynamic Application Security Testing (DAST):
 
 **Triggers:**
 - Manual: `workflow_dispatch` with environment selection (staging/production)
-- Automatic: On successful completion of CI Pipeline for `main` branch (deploys to staging)
+- Automatic: After **successful** CI Pipeline on `main` (deploys to staging). Failed CI does not deploy.
+- If `DATABASE_URL`, `JWT_SECRET`, or `POSTGRES_PASSWORD` are missing, deploy skips instead of failing.
 
 **Deployment Steps:**
 1. Create `.env` file from GitHub secrets
