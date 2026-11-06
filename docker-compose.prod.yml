@@ -1,0 +1,97 @@
+# Production Docker Compose with network segmentation and secrets management
+# All secrets must be provided via environment variables
+# Example: export POSTGRES_PASSWORD=xxx JWT_SECRET=xxx DATABASE_URL=xxx
+version: '3.8'
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true  # Backend network is isolated from external access
+
+services:
+  postgres:
+    # Pin to specific version with SHA256 digest for immutability
+    # TODO: Replace with actual SHA256 digest: postgres:16-alpine@sha256:xxxxx
+    image: postgres:16-alpine
+    container_name: taskflow-postgres-prod
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: taskflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d taskflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  server:
+    image: ${REGISTRY:-local}/taskflow-server:${IMAGE_TAG:-latest}
+    build:
+      context: ./server
+      dockerfile: Dockerfile.hardened
+    container_name: taskflow-server-prod
+    restart: always
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: "7d"
+      PORT: 5000
+      CLIENT_URL: "http://localhost"
+      NODE_ENV: "production"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  client:
+    image: ${REGISTRY:-local}/taskflow-client:${IMAGE_TAG:-latest}
+    build:
+      context: ./client
+      dockerfile: Dockerfile.hardened
+    container_name: taskflow-client-prod
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - frontend
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+volumes:
+  postgres_data:
