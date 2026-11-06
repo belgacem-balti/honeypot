@@ -168,32 +168,81 @@ Jobs in `ci.yml` are sequential: **Security Scans** must succeed before **Build 
 
 ## 7. Evidence from GitHub Actions (screenshots)
 
-**Figure 3 — Actions home: four runs (two CI, two Deploy)**
+Each figure is followed by **how to read it** (what to look at, what it proves). More PNG files live in `docs/screenshots/` and in the Overleaf `figures/` folder.
+
+**Figure 3 — Actions home**
 
 ![All workflow runs](screenshots/00-actions-all-runs.png)
 
-Left column: the four workflows (CI Pipeline, Deploy, SBOM, Scheduled Security Scans).  
-Grey Deploy #2 is **skipped** (desired). Red CI #2 still failed at the last step (GHCR). Red CI #1 is the lockfile failure.
+*How to read it.* Four workflows in the sidebar. Deploy #2 is **skipped** (grey) because CI #2 failed — that is a control, not an accident. CI #1 (24s) and CI #2 (3m 58s) are different failures: install vs GHCR push.
 
-**Figure 4 — Before (CI run #1): Security Scans failed, Build skipped**
+**Figure 4 — Workflow files in git**
 
-![CI run 1 lockfile failure](screenshots/01-ci-run-lockfile-fail.png)
+![Workflows folder](screenshots/04-workflows-folder.png)
 
-- Duration **24s** — never reached tests or Docker.  
-- Annotation: **Leaks detected** (Gitleaks; expected on a honeypot).  
-- Annotation: **no artifacts** for npm/Trivy because `npm ci` died first.  
-- Graph: red Security Scans → grey Build & Test.
+*How to read it.* The pipeline is code: `ci.yml`, `deploy.yml`, `sbom.yml`, `security.yml`. Commit messages on the right show the files evolved with the rest of the repo.
 
-**Figure 5 — After lockfiles (CI run #2): scans and tests ran**
+**Figure 5 — `ci.yml` (Gitleaks + Node setup)**
 
-![CI run 2 after lockfiles](screenshots/02-ci-run-after-lockfiles.png)
+![ci.yml](screenshots/03-ci-yml-github.png)
 
-- Duration **3m 58s**.  
-- **Security Scans green** (1m 5s): Gitleaks, npm ci, npm audit, Trivy fs, Semgrep, artifacts uploaded.  
-- **Build & Test red** (2m 47s): server tests, client tests, both hardened images, Trivy image, SBOMs all **succeeded**; **Tag and push client image** failed (GHCR permission).  
-- Artifacts: `security-scan-results`, `image-scan-results` (and related uploads).
+*How to read it.* `fetch-depth: 0` gives Gitleaks full history. `continue-on-error: true` is the honeypot choice so planted secrets do not stop later tools.
 
-That is the important “before/after” for the report: the pipeline moved from “cannot even install” to “full security and build path executed.”
+**Figure 6 — CI run #1: lockfile, Build skipped**
+
+![CI run 1](screenshots/01-ci-run-lockfile-fail.png)
+
+*How to read it.* Graph: red Security Scans → grey Build. Pink “Leaks detected” = Gitleaks. Yellow “no artifacts” = `npm ci` died before Trivy/Semgrep could write files. **Do not** use this run as Trivy evidence.
+
+**Figure 7 — CI run #2: scans and builds actually ran**
+
+![CI run 2](screenshots/02-ci-run-after-lockfiles.png)
+
+*How to read it.* Green Security Scans (1m 5s) then Build & Test (2m 47s). Cite this run for Gitleaks, npm audit, Trivy fs, Semgrep, Jest, Vitest, hardened Docker, Trivy image, SBOM. The remaining red X is GHCR push only.
+
+**Figure 8 — Gitleaks rules**
+
+![.gitleaks.toml](screenshots/06-gitleaks-toml.png)
+
+*How to read it.* Custom regexes for `JWT_SECRET` and `DATABASE_URL`, not only entropy. Pair this screenshot with the Actions step `Run Gitleaks` (sign-in required).
+
+**Figure 9 — Hardened server image**
+
+![Dockerfile.hardened](screenshots/05-dockerfile-hardened.png)
+
+*How to read it.* Two `FROM` lines = multi-stage. UID 1001 = not root. Prisma generate in the builder only. This is what CI builds and Trivy image-scans.
+
+**Figure 10 — Insecure Compose (honeypot bait)**
+
+![docker-compose.insecure.yml](screenshots/08-compose-insecure.png)
+
+*How to read it.* Hardcoded secrets, host `/` mount, Docker socket, `privileged: true`. This is the **before** container story. Deploy does **not** use this file.
+
+**Figure 11 — Production Compose (countermeasure)**
+
+![docker-compose.prod.yml](screenshots/07-compose-prod.png)
+
+*How to read it.* `backend` network is `internal: true` so Postgres is not on the internet. Passwords come from `${POSTGRES_PASSWORD}`, not literals.
+
+**Figure 12 — Nginx security headers**
+
+![nginx.conf](screenshots/09-nginx-headers.png)
+
+*How to read it.* CSP, `X-Frame-Options DENY`, `nosniff`, `server_tokens off`. Headers are repeated on static files because nginx nested `add_header` replaces parents. ZAP is the runtime check.
+
+**Figure 13 — Weekly Trivy + ZAP workflow**
+
+![security.yml](screenshots/10-security-yml-zap.png)
+
+*How to read it.* ZAP is **not** in CI. Cron Monday 00:00 UTC plus **Run workflow**. Trivy SARIF uploads to the GitHub Security tab. Scroll for the `zap-scan` job.
+
+**Figure 14 — Jenkins equivalent**
+
+![Jenkinsfile](screenshots/11-jenkinsfile.png)
+
+*How to read it.* Same tools (Gitleaks 8.18.2, Trivy 0.50.1) as Docker `run` on a Linux agent. `FAIL_ON_CRITICAL=false` matches the honeypot Actions gate.
+
+That is the important “before/after” for Actions: the pipeline moved from “cannot even install” to “full security and build path executed.”
 
 ### Extra screenshots you should add while signed in
 

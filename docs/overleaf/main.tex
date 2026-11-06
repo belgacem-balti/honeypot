@@ -18,6 +18,14 @@
 \usepackage{setspace}
 \usepackage{tikz}
 \usepackage[most]{tcolorbox}
+\usepackage{caption}
+\captionsetup{
+  font={small,color=muted},
+  labelfont={bf,color=statblue},
+  skip=6pt,
+  justification=raggedright,
+  singlelinecheck=false
+}
 
 \hypersetup{
   colorlinks=true,
@@ -147,6 +155,15 @@ SBOM & Inventory & Cannot answer what shipped \\
 ZAP & Runtime HTTP & Missing headers unseen
 \end{tcolorbox}
 
+\section{Pipeline architecture}
+
+On every push to \texttt{main} or \texttt{develop}, GitHub Actions runs \textbf{Security Scans} then, only if that job is allowed to continue, \textbf{Build \& Test}.
+The first job is cheap (clone, Gitleaks, npm, Trivy fs, Semgrep). The second job is expensive (Jest, Vitest, two Docker builds, Trivy image, SBOM, GHCR).
+Deploy is a separate workflow: it starts only when CI \emph{succeeds}, and it skips if secrets are empty.
+ZAP is a third workflow so a 10-minute DAST run does not block every commit.
+
+\texttt{security-scan} $\rightarrow$ \texttt{build-and-test} $\rightarrow$ (optional) \texttt{deploy} \quad;\quad weekly \texttt{security.yml} (Trivy SARIF + ZAP).
+
 \section{Vulnerabilities and countermeasures}
 
 The application is a honeypot: insecure files (\texttt{Dockerfile.insecure}, \texttt{docker-compose.insecure.yml}, \texttt{vulnerable.js}) remain as teaching targets. The pipeline \emph{detects} them. The hardened path (\texttt{Dockerfile.hardened}, env substitution, nginx headers) is the \emph{countermeasure} used for builds and deploy.
@@ -230,57 +247,165 @@ Missing HTTP headers & ZAP (scheduled) & nginx security headers \\
 Deploy dead / leaked env & deploy.yml health + secrets check & Skip deploy if CI failed or secrets empty
 \end{tcolorbox}
 
-\section{Evidence (GitHub Actions)}
+\section{Annotated evidence}
+
+Each figure below is a real GitHub page from \texttt{belgacem-balti/honeypot}. After the image, a short reading explains \emph{what to look at} and \emph{what it proves}.
+
+\subsection{Workflows and Actions}
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.92\textwidth]{figures/00-actions-all-runs.png}
-\figcap{Figure 1. Actions home: CI and Deploy runs (6 Nov 2026).}
+\includegraphics[width=0.95\textwidth]{figures/00-actions-all-runs.png}
+\caption{GitHub Actions home (6 Nov 2026). Four runs: two CI Pipeline, two Deploy. Left sidebar lists the four workflow files.}
 \end{figure}
+\noindent\textbf{How to read Figure~\thefigure.}
+The grey Deploy \#2 with a skipped icon is the desired control: deploy must not start when CI failed.
+The two red CI rows are not the same failure: \#1 died in 24\,s (install), \#2 ran 3\,m\,58\,s (almost the full path).
+The left column is the catalogue of controls: CI (every push), Deploy (after success), SBOM (on release), Scheduled Security Scans (ZAP + full Trivy, Monday or manual).
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.92\textwidth]{figures/01-ci-run-lockfile-fail.png}
-\figcap{Figure 2. CI run \#1 --- Security Scans failed on \texttt{npm ci}; Build skipped (24s).}
+\includegraphics[width=0.95\textwidth]{figures/04-workflows-folder.png}
+\caption{Repository view of \texttt{.github/workflows/}: \texttt{ci.yml}, \texttt{deploy.yml}, \texttt{sbom.yml}, \texttt{security.yml}, plus the operator README.}
 \end{figure}
+\noindent\textbf{How to read Figure~\thefigure.}
+This is the ``source of truth'' for GitHub. Unlike a screenshot of a passing job, this figure shows the pipeline is versioned in git (Conventional Commits on the right).
+A reviewer can open each YAML and match it to a tool in Section~4.
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.92\textwidth]{figures/02-ci-run-after-lockfiles.png}
-\figcap{Figure 3. CI run \#2 --- scans green; tests and hardened builds ran (3m 58s).}
+\includegraphics[width=0.95\textwidth]{figures/03-ci-yml-github.png}
+\caption{Start of \texttt{ci.yml}: push/PR triggers, Gitleaks step with \texttt{continue-on-error}, Node 20 setup.}
 \end{figure}
+\noindent\textbf{How to read Figure~\thefigure.}
+\texttt{fetch-depth: 0} matters: Gitleaks needs full git history, not a shallow clone.
+\texttt{continue-on-error: true} on Gitleaks is the honeypot choice: planted secrets must not block the rest of the demo.
+\texttt{cache: npm} with both lockfiles is why run \#1 exploded when the committed lockfile did not match \texttt{package.json}.
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.92\textwidth]{figures/04-workflows-folder.png}
-\figcap{Figure 4. Workflow files: \texttt{ci.yml}, \texttt{deploy.yml}, \texttt{sbom.yml}, \texttt{security.yml}.}
+\includegraphics[width=0.95\textwidth]{figures/01-ci-run-lockfile-fail.png}
+\caption{CI run \#1 (\texttt{c442e1c}). Graph: red Security Scans (22\,s) then grey Build \& Test (0\,s). Annotations include Gitleaks leaks and ``no artifacts''.}
 \end{figure}
+\noindent\textbf{How to read Figure~\thefigure.}
+The \textbf{job graph} is the most important visual: Build never started because it \texttt{needs: security-scan}.
+The pink annotation ``Leaks detected'' is Gitleaks doing its job on honeypot fixtures.
+The yellow annotation ``No files were found \ldots npm-audit / trivy-fs'' means \texttt{npm ci} died before those files existed --- so this run cannot be used as evidence of Trivy or Semgrep.
 
-\section{How to screenshot each tool}
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/02-ci-run-after-lockfiles.png}
+\caption{CI run \#2 (\texttt{2cf3016}). Green Security Scans (1\,m\,5\,s) feeding red Build \& Test (2\,m\,47\,s). Artifacts listed at the bottom of the run (not all visible here).}
+\end{figure}
+\noindent\textbf{How to read Figure~\thefigure.}
+This is the run to cite for \textbf{Gitleaks, npm audit, Trivy fs, Semgrep, Jest, Vitest, Docker hardened build, Trivy image, SBOM}.
+API job data shows those steps succeeded; the red X is only \texttt{Tag and push client image} (GHCR \texttt{packages: write}).
+Duration jumped from 24\,s to $\approx$4\,min because the pipeline actually built two images and scanned them.
 
-Sign in to GitHub. Open CI run \#2. Click the job, then the step.
+\subsection{Secret detection}
 
-\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
-  \item \textbf{Gitleaks} --- job Security Scans $\rightarrow$ \texttt{Run Gitleaks}
-  \item \textbf{npm audit} --- \texttt{Run npm audit (client)} and \texttt{(server)}
-  \item \textbf{Trivy fs} --- \texttt{Run Trivy filesystem scan (client/server)}
-  \item \textbf{Semgrep} --- \texttt{Run Semgrep}
-  \item \textbf{Jest / Vitest} --- job Build \& Test $\rightarrow$ \texttt{Run server tests} / \texttt{Run client tests}
-  \item \textbf{Trivy image} --- \texttt{Scan client/server image with Trivy}
-  \item \textbf{SBOM} --- \texttt{Generate SBOM for client/server}
-  \item \textbf{ZAP} --- workflow \textbf{Scheduled Security Scans} (Run workflow) $\rightarrow$ \texttt{Run ZAP baseline scan}
-\end{itemize}
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/06-gitleaks-toml.png}
+\caption{\texttt{.gitleaks.toml}: custom rules for \texttt{JWT\_SECRET}, \texttt{DATABASE\_URL}, generic passwords, and AWS access key IDs.}
+\end{figure}
+\noindent\textbf{How to read Figure~\thefigure.}
+Rules are regexes, not a generic entropy-only scan. That is why this project catches \texttt{JWT\_SECRET=hardcoded-...} even when entropy is mediocre.
+The allowlist (further down in the same file) skips \texttt{node\_modules} so CI uses git history instead of walking 100k vendor files.
+Screenshot this file next to the Actions step \texttt{Run Gitleaks} once you are signed in.
 
-Also download artifacts \texttt{security-scan-results} and \texttt{image-scan-results} from the run Summary page.
+\subsection{Hardened vs insecure runtime}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/05-dockerfile-hardened.png}
+\caption{\texttt{server/Dockerfile.hardened}: multi-stage \texttt{node:20-alpine}, Prisma generate in builder, non-root UID 1001.}
+\end{figure}
+\noindent\textbf{How to read Figure~\thefigure.}
+Two \texttt{FROM} lines = two stages. The production stage never runs \texttt{npx prisma db push} (migrations stay operational, not in \texttt{CMD}).
+\texttt{adduser -u 1001} is the countermeasure to ``container as root''.
+CI \texttt{docker/build-push-action} points at this file, not at \texttt{Dockerfile} / \texttt{Dockerfile.insecure}.
+Trivy image scan then inspects \emph{this} artifact.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/08-compose-insecure.png}
+\caption{Honeypot bait: \texttt{docker-compose.insecure.yml} with hardcoded DB/JWT/AWS secrets, host root mount, Docker socket, \texttt{privileged: true}.}
+\end{figure}
+\noindent\textbf{How to read Figure~\thefigure.}
+This file is the \textbf{before} state for containers. Privileged + \texttt{/var/run/docker.sock} is a trivial breakout.
+Gitleaks and Trivy config scanning are expected to fire here.
+It is \emph{not} what Deploy uses; it exists so the report can show a bad baseline.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/07-compose-prod.png}
+\caption{\texttt{docker-compose.prod.yml}: \texttt{frontend}/\texttt{backend} networks, \texttt{backend} marked \texttt{internal: true}, \texttt{POSTGRES\_PASSWORD: \$\{POSTGRES\_PASSWORD\}}.}
+\end{figure}
+\noindent\textbf{How to read Figure~\thefigure.}
+\texttt{internal: true} on \texttt{backend} means Postgres is not reachable from the internet --- only from services on that network (the API).
+No password literals: if the GitHub secret is missing, Compose must fail or skip (Deploy \#1 vs \#2).
+Resource \texttt{deploy.resources.limits} (CPU/memory) appear just below the crop; they cap noisy-neighbour DoS.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/09-nginx-headers.png}
+\caption{\texttt{client/nginx.conf}: \texttt{server\_tokens off}, CSP, \texttt{X-Frame-Options DENY}, \texttt{nosniff}, deny hidden files, \texttt{/api/} proxy.}
+\end{figure}
+\noindent\textbf{How to read Figure~\thefigure.}
+Headers are the countermeasure to clickjacking (frame), XSS (CSP), MIME sniffing (\texttt{nosniff}).
+They are repeated inside the static-asset location because nginx nested \texttt{add\_header} replaces parent headers instead of merging them.
+ZAP (next figure) is the runtime proof that those headers exist on the wire, not only in git.
+
+\subsection{DAST and Jenkins}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/10-security-yml-zap.png}
+\caption{\texttt{security.yml}: weekly cron plus \texttt{workflow\_dispatch}; Trivy SARIF upload; job \texttt{zap-scan} (OWASP ZAP DAST) starts below the crop.}
+\end{figure}
+\noindent\textbf{How to read Figure~\thefigure.}
+ZAP is \textbf{not} in \texttt{ci.yml}. To screenshot it: Actions $\rightarrow$ Scheduled Security Scans $\rightarrow$ Run workflow.
+The Trivy job writes SARIF into the GitHub Security tab (\texttt{upload-sarif@v3}).
+\texttt{exit-code: "0"} again: findings are evidence, not a red weekly email for the honeypot.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/11-jenkinsfile.png}
+\caption{Jenkinsfile: Linux agent, pinned Trivy 0.50.1 and Gitleaks 8.18.2, \texttt{FAIL\_ON\_CRITICAL=false}, Checkout then Secret Detection via \texttt{docker run}.}
+\end{figure}
+\noindent\textbf{How to read Figure~\thefigure.}
+Same tools as GitHub Actions, different runner. \texttt{\$\{WORKSPACE\}:/repo} is the Linux volume form.
+\texttt{|| true} after Gitleaks matches \texttt{continue-on-error} in Actions.
+This figure answers ``is the pipeline locked to GitHub?'' --- no.
+
+\section{Where to click for tool logs}
+
+Sign in (anonymous GitHub hides logs). Open CI run \#2. Expand the job, then the step. Capture the step title + log.
+
+\begin{tcolorbox}[common, tabularx={Y Y Y}]
+\textbf{Tool} & \textbf{Job} & \textbf{Step name in the UI} \\
+Gitleaks & Security Scans & \texttt{Run Gitleaks} \\
+npm audit & Security Scans & \texttt{Run npm audit (client/server)} \\
+Trivy fs & Security Scans & \texttt{Run Trivy filesystem scan (...)} \\
+Semgrep & Security Scans & \texttt{Run Semgrep} \\
+Jest / Vitest & Build \& Test & \texttt{Run server tests} / \texttt{Run client tests} \\
+Trivy image & Build \& Test & \texttt{Scan client/server image with Trivy} \\
+SBOM & Build \& Test & \texttt{Generate SBOM for client/server} \\
+ZAP & OWASP ZAP DAST (other workflow) & \texttt{Run ZAP baseline scan}
+\end{tcolorbox}
+
+On the run \textbf{Summary}, download artifacts \texttt{security-scan-results} and \texttt{image-scan-results} and screenshot the JSON in an editor (second evidence per tool).
 
 \section{Recommendations}
 
 \begin{enumerate}[leftmargin=1.2em,itemsep=3pt]
-  \item Keep \texttt{permissions.packages: write} so GHCR push succeeds.
+  \item Keep \texttt{permissions.packages: write} so the GHCR push in Build \& Test can succeed; re-run CI and screenshot a green graph if possible.
+  \item Sign in and capture the eight tool steps above; anonymous screenshots only show the job graph.
   \item For a real product: Trivy \texttt{exit-code: 1} and Jenkins \texttt{FAIL\_ON\_CRITICAL=true}.
-  \item Store \texttt{JWT\_SECRET}, \texttt{DATABASE\_URL}, \texttt{POSTGRES\_PASSWORD} in GitHub Environments.
-  \item Raise Jest coverage toward 70\%; add Playwright to CI after Compose secrets exist.
-  \item Do not treat a green honeypot pipeline as production-safe.
+  \item Store \texttt{JWT\_SECRET}, \texttt{DATABASE\_URL}, \texttt{POSTGRES\_PASSWORD} in GitHub Environments with reviewers on production.
+  \item Trigger \textbf{Scheduled Security Scans} once to obtain ZAP HTML (\texttt{zap-report.html}).
+  \item Do not treat a green honeypot pipeline as production-safe: pins and \texttt{vulnerable.js} are still in the tree.
 \end{enumerate}
 
 \vspace{0.8em}
