@@ -7,6 +7,9 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:ci": "jest --ci --coverage --maxWorkers=2",
     "prisma:migrate": "npx prisma migrate dev",
     "prisma:generate": "npx prisma generate"
   },
@@ -26,8 +29,12 @@
     "xmlhttprequest": "1.8.0"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/supertest": "^7.2.1",
     "embedded-postgres": "^18.4.0-beta.17",
+    "jest": "^30.5.2",
     "nodemon": "^3.0.2",
-    "prisma": "^5.7.0"
+    "prisma": "^5.7.0",
+    "supertest": "^7.3.1"
   }
 }
