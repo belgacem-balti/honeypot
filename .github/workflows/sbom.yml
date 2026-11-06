@@ -1,0 +1,69 @@
+name: Generate and Attest SBOM
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Pull images
+        run: |
+          docker pull ghcr.io/${{ github.repository }}-client:latest
+          docker pull ghcr.io/${{ github.repository }}-server:latest
+      
+      - name: Get image digests
+        id: digests
+        run: |
+          CLIENT_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "ghcr.io/${{ github.repository }}-client:latest" | cut -d'@' -f2)
+          SERVER_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "ghcr.io/${{ github.repository }}-server:latest" | cut -d'@' -f2)
+          echo "client=\"${CLIENT_DIGEST}\"" >> "$GITHUB_OUTPUT"
+          echo "server=\"${SERVER_DIGEST}\"" >> "$GITHUB_OUTPUT"
+      
+      - name: Generate SBOMs
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.50.1 image --format cyclonedx \
+            --output sbom-client.json ghcr.io/${{ github.repository }}-client:latest
+          
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.50.1 image --format cyclonedx \
+            --output sbom-server.json ghcr.io/${{ github.repository }}-server:latest
+      
+      - name: Attest client SBOM
+        uses: actions/attest-sbom@v1
+        with:
+          subject-name: ghcr.io/${{ github.repository }}-client
+          subject-digest: ${{ steps.digests.outputs.client }}
+          sbom-path: sbom-client.json
+          push-to-registry: true
+      
+      - name: Attest server SBOM
+        uses: actions/attest-sbom@v1
+        with:
+          subject-name: ghcr.io/${{ github.repository }}-server
+          subject-digest: ${{ steps.digests.outputs.server }}
+          sbom-path: sbom-server.json
+          push-to-registry: true
+      
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sboms
+          path: sbom-*.json

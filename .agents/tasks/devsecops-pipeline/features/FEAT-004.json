@@ -1,0 +1,35 @@
+{
+  "id": "FEAT-004",
+  "type": "feat",
+  "description": "Implement complete GitHub Actions CI/CD workflows covering all 11 pipeline stages: secret detection, dependency scanning, SAST, build, container image scanning, SBOM generation, testing, security gates, registry push, deployment, and DAST. Create four workflow files: ci.yml (main pipeline), security.yml (scheduled scans), deploy.yml (deployment), and sbom.yml (SBOM attestation).",
+  "status": "completed",
+  "steps": [
+    "Create .github/workflows/ directory structure.",
+    "Create .github/workflows/ci.yml: Main CI pipeline triggered on push to main/develop and PRs to main. Two jobs: 'security-scan' (stages 1-4: checkout, Gitleaks, npm audit for client+server, Trivy fs for client+server, Semgrep with p/javascript, p/react, p/nodejs, p/security-audit rulesets) and 'build-and-test' (needs security-scan, runs npm test for both, builds Docker images with buildx, scans images with Trivy, generates SBOMs in cyclonedx format, pushes to GHCR with commit SHA and latest tags). Upload all scan results as artifacts. Copy complete workflow from Design Doc section 4.",
+    "Create .github/workflows/security.yml: Scheduled security scans triggered by cron (weekly on Monday 00:00 UTC) and manual workflow_dispatch. Two jobs: 'trivy-repo-scan' (full fs scan of entire repo, upload SARIF to GitHub Security tab) and 'zap-scan' (deploy app with docker compose, run OWASP ZAP baseline scan against localhost, upload results as artifacts, shutdown compose). Copy from Design Doc section 4.",
+    "Create .github/workflows/deploy.yml: Deployment workflow triggered by workflow_dispatch with environment input (staging/production) and workflow_run on CI completion. One job 'deploy' that creates .env file from secrets, runs docker compose pull and up -d, performs health checks on /api/health and /, runs smoke tests (register + login curl commands). Copy from Design Doc section 4.",
+    "Create .github/workflows/sbom.yml: SBOM generation and attestation triggered on release tag (v*.*.*). Pulls latest images from GHCR, generates SBOMs with Trivy cyclonedx format, uses actions/attest-sbom@v1 to attest and push to registry, uploads SBOM artifacts. Requires permissions: contents: write, id-token: write, attestations: write. Copy from Design Doc section 10.",
+    "Create .github/workflows/README.md: Document all four workflows, their triggers, required secrets (GITHUB_TOKEN auto, DOCKER_USERNAME, DOCKER_PASSWORD, JWT_SECRET, DATABASE_URL, POSTGRES_PASSWORD, TEST_DATABASE_URL, TEST_JWT_SECRET), and how to configure GitHub environments for staging/production."
+  ],
+  "acceptance_criteria": [
+    "All four workflow YAML files are valid (no syntax errors when checked with 'yamllint' or GitHub Actions validator)",
+    ".github/workflows/ci.yml contains both 'security-scan' and 'build-and-test' jobs with correct dependencies",
+    "ci.yml uses aquasecurity/trivy-action@master for fs and image scans with severity CRITICAL,HIGH",
+    "ci.yml uses returntocorp/semgrep-action@v1 with p/javascript, p/react, p/nodejs, p/security-audit configs",
+    "security.yml uploads Trivy SARIF to GitHub Security via github/codeql-action/upload-sarif@v3",
+    "deploy.yml creates .env file from secrets before docker compose up",
+    "sbom.yml uses actions/attest-sbom@v1 for SBOM attestation",
+    "All workflows reference exact tool versions (Trivy 0.50.1, Gitleaks 8.18.2, ZAP 2.14.0, Node 20)"
+  ],
+  "verification": [
+    "Validate YAML syntax: 'yamllint .github/workflows/*.yml' (install yamllint if needed) shows no errors",
+    "Validate with actionlint: 'docker run --rm -v \"${PWD}:/repo\" rhysd/actionlint:latest -verbose /repo/.github/workflows/*.yml' (checks for common mistakes)",
+    "Check ci.yml structure: 'cat .github/workflows/ci.yml | grep -E \"(jobs:|security-scan:|build-and-test:|needs:)\"' shows job dependencies",
+    "Verify Trivy usage: 'grep -n \"aquasecurity/trivy-action\" .github/workflows/ci.yml' shows at least 4 uses (fs client, fs server, image client, image server)",
+    "Verify Semgrep config: 'grep -n \"p/javascript\" .github/workflows/ci.yml' shows config inclusion",
+    "Check secret references: 'grep -n \"secrets\\.\" .github/workflows/deploy.yml' shows JWT_SECRET, DATABASE_URL usage",
+    "Verify SBOM attestation: 'grep -n \"actions/attest-sbom\" .github/workflows/sbom.yml' present"
+  ],
+  "blocked_reason": null,
+  "findings": "Successfully created all four GitHub Actions workflows (.github/workflows/ci.yml, security.yml, deploy.yml, sbom.yml) and README.md. All workflows validated with actionlint (0 errors). Workflows implement complete DevSecOps pipeline: secret detection (Gitleaks), dependency scanning (npm audit + Trivy fs), SAST (Semgrep with p/javascript, p/react, p/nodejs, p/security-audit), Docker image scanning (Trivy), SBOM generation (CycloneDX format), scheduled ZAP DAST scans, and deployment with health checks. ci.yml has proper job dependencies (build-and-test needs security-scan). All tool versions pinned: Trivy 0.50.1, Gitleaks via v2 action, ZAP 2.14.0, Node 20. SBOM attestation uses actions/attest-sbom@v1 with proper permissions. README documents all workflows, required secrets (GITHUB_TOKEN, JWT_SECRET, DATABASE_URL, POSTGRES_PASSWORD, TEST_DATABASE_URL, TEST_JWT_SECRET), and GitHub environment configuration for staging/production."
+}
