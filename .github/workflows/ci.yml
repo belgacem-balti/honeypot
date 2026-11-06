@@ -12,6 +12,12 @@ env:
   # Unit tests mock Prisma; these values are only used if a test reads env.
   TEST_JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
 
+permissions:
+  contents: read
+  packages: write
+  actions: read
+  security-events: write
+
 jobs:
   security-scan:
     name: Security Scans
