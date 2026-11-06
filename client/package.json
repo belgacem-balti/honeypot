@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "_security_note": "INTENTIONALLY INSECURE - Vulnerable dependencies for DevSecOps testing. Known CVEs: axios@0.21.1 (CVE-2021-3749), lodash@4.17.15 (prototype pollution), serialize-javascript@3.1.0 (XSS)",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -12,10 +13,12 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
-    "axios": "^1.6.2",
+    "axios": "0.21.1",
+    "lodash": "4.17.15",
     "lucide-react": "^0.294.0",
     "recharts": "^2.10.3",
-    "react-hot-toast": "^2.4.1"
+    "react-hot-toast": "^2.4.1",
+    "serialize-javascript": "3.1.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
