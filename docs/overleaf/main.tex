@@ -1,0 +1,289 @@
+% TaskFlow DevSecOps CI/CD report -- Overleaf (pdfLaTeX)
+% Upload this file + the figures/ folder, then Recompile.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=1.8cm]{geometry}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{colortbl}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{tikz}
+\usepackage[most]{tcolorbox}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=linkblue,
+  urlcolor=linkblue,
+  pdftitle={DevSecOps CI/CD Pipeline Report -- TaskFlow Honeypot}
+}
+
+\definecolor{pagebg}{HTML}{1B1F24}
+\definecolor{cardbg}{HTML}{252A31}
+\definecolor{cardbg2}{HTML}{2C323A}
+\definecolor{muted}{HTML}{9AA3AE}
+\definecolor{titlew}{HTML}{F3F4F6}
+\definecolor{line}{HTML}{3A424C}
+\definecolor{statred}{HTML}{F87171}
+\definecolor{statblue}{HTML}{60A5FA}
+\definecolor{statgreen}{HTML}{34D399}
+\definecolor{statwhite}{HTML}{E5E7EB}
+\definecolor{warnbg}{HTML}{3F3516}
+\definecolor{warnfg}{HTML}{FBBF24}
+\definecolor{linkblue}{HTML}{7DD3FC}
+\definecolor{beforebd}{HTML}{F87171}
+\definecolor{afterbd}{HTML}{34D399}
+\definecolor{headerrow}{HTML}{323842}
+\definecolor{crit}{HTML}{FCA5A5}
+\definecolor{high}{HTML}{FCD34D}
+\definecolor{med}{HTML}{93C5FD}
+
+\pagecolor{pagebg}
+\color{titlew}
+\setstretch{1.12}
+
+\titleformat{\section}{\large\bfseries\color{titlew}}{\thesection.}{0.6em}{}
+\titleformat{\subsection}{\normalsize\bfseries\color{statblue}}{\thesubsection.}{0.5em}{}
+\titlespacing*{\section}{0pt}{1.3em}{0.55em}
+\titlespacing*{\subsection}{0pt}{0.9em}{0.35em}
+
+\tcbset{
+  common/.style={
+    enhanced,
+    colback=cardbg,
+    colframe=line,
+    boxrule=0.4pt,
+    arc=3pt,
+    left=8pt,right=8pt,top=8pt,bottom=8pt,
+    fontupper=\color{titlew}\small
+  }
+}
+
+\newcommand{\kpi}[3]{%
+  \begin{tcolorbox}[common, halign=center, valign=center, height=2.55cm]
+    {\fontsize{22}{24}\selectfont\bfseries\color{#1}#2}\\[4pt]
+    {\scriptsize\color{muted}#3}
+  \end{tcolorbox}%
+}
+
+\newcommand{\figcap}[1]{{\centering\color{muted}\small #1\par}}
+
+\renewcommand{\arraystretch}{1.22}
+\newcolumntype{Y}{>{\raggedright\arraybackslash\color{titlew}}X}
+\newcolumntype{L}{>{\raggedright\arraybackslash\color{titlew}}p}
+
+\begin{document}
+
+{\Huge\bfseries CI/CD pipeline report}\\[6pt]
+{\color{muted}TaskFlow honeypot --- before vs after, tools, risks, vulnerabilities and countermeasures.}\\[8pt]
+{\small
+\href{https://github.com/belgacem-balti/honeypot/actions}{Actions}\quad
+\href{https://github.com/belgacem-balti/honeypot/actions/runs/42204816549}{CI run \#1}\quad
+\href{https://github.com/belgacem-balti/honeypot/actions/runs/42205865589}{CI run \#2}}
+\vspace{1.1em}
+
+\noindent
+\begin{minipage}[t]{0.24\textwidth}\kpi{statred}{None}{CI before this work}\end{minipage}\hfill
+\begin{minipage}[t]{0.24\textwidth}\kpi{statblue}{4}{Workflows after}\end{minipage}\hfill
+\begin{minipage}[t]{0.24\textwidth}\kpi{statwhite}{11}{Stages (scan to DAST)}\end{minipage}\hfill
+\begin{minipage}[t]{0.24\textwidth}\kpi{statgreen}{3m 58s}{CI run \#2 duration}\end{minipage}
+
+\vspace{0.9em}
+\begin{tcolorbox}[common, colback=warnbg, colframe=warnfg, leftrule=3pt]
+\color{warnfg}\textbf{Note.}\color{titlew}\
+This honeypot stays intentionally vulnerable so scanners have findings.
+GitHub run \#2: Security Scans passed; tests and hardened builds passed; GHCR push failed until \texttt{packages: write}.
+A green scan job means the control ran and stored a report, not that the application is safe to deploy.
+\end{tcolorbox}
+
+\section{GitHub Actions outcomes (6 Nov 2026)}
+
+\begin{tcolorbox}[common, tabularx={Y Y Y Y},
+  boxrule=0.4pt]
+\textbf{Run} & \textbf{Commit} & \textbf{Duration} & \textbf{Result} \\
+CI \#1 & c442e1c & 24s & Fail: \texttt{npm ci} lockfile \\
+Deploy \#1 & c442e1c & 5s & Fail: no Compose secrets \\
+CI \#2 & 2cf3016 & 3m 58s & Scans + tests OK; GHCR push denied \\
+Deploy \#2 & 2cf3016 & skipped & Correct skip after failed CI
+\end{tcolorbox}
+
+\section{Before vs after}
+
+\noindent
+\begin{minipage}[t]{0.485\textwidth}
+\begin{tcolorbox}[common, colback=cardbg2, colframe=beforebd, title={\color{statred}Before --- no pipeline}, fonttitle=\bfseries]
+No workflows, no tests, hardcoded Compose secrets.\\[4pt]
+Root containers, no HEALTHCHECK, no SBOM.\\[4pt]
+\texttt{axios 0.21.1} / \texttt{jsonwebtoken 8.5.1} unmonitored.
+\end{tcolorbox}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\begin{tcolorbox}[common, colback=cardbg2, colframe=afterbd, title={\color{statgreen}After --- DevSecOps path}, fonttitle=\bfseries]
+Gitleaks, npm audit, Trivy, Semgrep on every push.\\[4pt]
+Jest + Vitest; \texttt{Dockerfile.hardened}; CycloneDX SBOM.\\[4pt]
+Deploy only if CI succeeds and secrets exist.
+\end{tcolorbox}
+\end{minipage}
+
+\section{Why each tool}
+
+\begin{tcolorbox}[common, tabularx={Y Y Y}]
+\textbf{Tool} & \textbf{Why} & \textbf{Impact if missing} \\
+Gitleaks & Git-history secrets & Keys reach GHCR \\
+npm audit & Node CVE graph & Pinned vulns ship silent \\
+Trivy fs & Cheap early scan & Wait until image build \\
+Semgrep & SAST in JS/React & Only deps, not \texttt{src/} \\
+Jest / Vitest & API + XSS contracts & Broken auth still ships \\
+Trivy image & Built layers & Clean source, dirty image \\
+SBOM & Inventory & Cannot answer what shipped \\
+ZAP & Runtime HTTP & Missing headers unseen
+\end{tcolorbox}
+
+\section{Vulnerabilities and countermeasures}
+
+The application is a honeypot: insecure files (\texttt{Dockerfile.insecure}, \texttt{docker-compose.insecure.yml}, \texttt{vulnerable.js}) remain as teaching targets. The pipeline \emph{detects} them. The hardened path (\texttt{Dockerfile.hardened}, env substitution, nginx headers) is the \emph{countermeasure} used for builds and deploy.
+
+\subsection{Secrets}
+
+\begin{tcolorbox}[common, tabularx={Y Y c Y}]
+\textbf{Vulnerability} & \textbf{Where} & \textbf{Sev.} & \textbf{Countermeasure} \\
+Hardcoded DB URL / JWT / AWS keys & \texttt{secrets.js}, \texttt{.env.production} & C & Gitleaks; gitignore \texttt{.env}; Compose \texttt{\$\{VAR\}} \\
+Secrets in Docker ENV & \texttt{Dockerfile.insecure} & C & Multi-stage hardened image; no \texttt{ENV} secrets \\
+Plain Kubernetes secrets & \texttt{kubernetes-secrets.yaml} & C & External secrets / Sealed Secrets (documented) \\
+DB dump with keys & \texttt{backup.sql} & C & Remove from git; Gitleaks allowlist only for fixtures
+\end{tcolorbox}
+
+\subsection{Vulnerable dependencies}
+
+\begin{tcolorbox}[common, tabularx={Y Y Y Y}]
+\textbf{Package} & \textbf{Issue} & \textbf{Detector} & \textbf{Countermeasure} \\
+axios 0.21.1 & CVE-2021-3749 ReDoS & npm audit, Trivy & Upgrade $\ge$ 1.6.3 in a real product \\
+jsonwebtoken 8.5.1 & CVE-2022-23529 & npm audit, Trivy & Upgrade jwt; rotate \texttt{JWT\_SECRET} \\
+lodash 4.17.15/19 & Prototype pollution & npm audit & Upgrade lodash \\
+minimist 1.2.5 & CVE-2021-44906 & npm audit & Upgrade minimist \\
+node-serialize 0.0.4 & RCE via deserialize & npm audit, Semgrep & Remove package; never \texttt{eval} user input \\
+js-yaml 3.13.0 & DoS CVE-2019-6286 & npm audit & Upgrade js-yaml \\
+serialize-javascript 3.1.0 & XSS CVE-2020-7660 & npm audit & Upgrade (client)
+\end{tcolorbox}
+
+\textit{Honeypot policy:} versions stay pinned so scanners keep reporting. Production policy: fail CI on HIGH/CRITICAL (\texttt{exit-code: 1}).
+
+\subsection{Insecure code}
+
+\begin{tcolorbox}[common, tabularx={Y Y c Y}]
+\textbf{Vulnerability} & \textbf{Endpoint / function} & \textbf{Sev.} & \textbf{Countermeasure} \\
+Command injection & \texttt{POST /api/vulnerable/ping} & C & Semgrep; never \texttt{exec} user input \\
+Path traversal & \texttt{GET /api/vulnerable/file} & C & Canonicalize path; allowlist \\
+SQL injection & \texttt{GET /api/vulnerable/user} & C & Prisma parameterized queries only \\
+Insecure deserialise / eval & \texttt{POST .../deserialize} & C & Ban \texttt{eval} / \texttt{node-serialize} \\
+SSRF & \texttt{GET /api/vulnerable/fetch} & H & URL allowlist; block link-local \\
+Config leak & \texttt{GET /api/vulnerable/config} & H & Authz; strip secrets from responses \\
+MD5 / SHA1 passwords & \texttt{weak-crypto.js} & C/H & bcrypt / argon2 (already used in auth service) \\
+Hardcoded crypto key & \texttt{encryptWithHardcodedKey} & C & Key from secret manager \\
+\texttt{Math.random} tokens & \texttt{generateWeakToken} & H & \texttt{crypto.randomBytes}
+\end{tcolorbox}
+
+\subsection{Containers and Compose}
+
+\begin{tcolorbox}[common, tabularx={Y c Y}]
+\textbf{Vulnerability} & \textbf{Sev.} & \textbf{Countermeasure} \\
+Node 14 EOL as root, \texttt{chmod 777}, secrets in ENV & C/H & \texttt{server/Dockerfile.hardened}: node 20, UID 1001, dumb-init, HEALTHCHECK \\
+\texttt{latest} tag, debug tools, no multi-stage (client) & M/H & \texttt{client/Dockerfile.hardened} + nginx:1.25-alpine \\
+Privileged, \texttt{/:/host-root}, Docker socket & C & \texttt{docker-compose.prod.yml}: no privileged, internal DB network \\
+Postgres 5432 published, no memory limits & H/M & Prod Compose: DB not published; CPU/memory limits \\
+Redis without password & H & Require \texttt{REDIS\_PASSWORD} from secrets
+\end{tcolorbox}
+
+\subsection{Nginx / HTTP}
+
+\begin{tcolorbox}[common, tabularx={Y Y Y}]
+\textbf{Vulnerability} & \textbf{Attack} & \textbf{Countermeasure} \\
+No \texttt{X-Frame-Options} & Clickjacking & \texttt{DENY} in \texttt{nginx.conf} (+ hardened) \\
+No CSP & XSS & \texttt{default-src 'self'; frame-ancestors 'none'} \\
+No \texttt{X-Content-Type-Options} & MIME sniffing & \texttt{nosniff} \\
+\texttt{server\_tokens on}, autoindex & Info leak & \texttt{server\_tokens off}; deny hidden files \\
+CORS \texttt{*} on API & CSRF / data theft & Restrict origin in production \\
+Missing HSTS & SSL strip & Add HSTS when TLS is terminated
+\end{tcolorbox}
+
+\textbf{Runtime check:} OWASP ZAP baseline (\texttt{security.yml}) against a live Compose stack. Complements Semgrep (source) and nginx config (build time).
+
+\subsection{Mapping: vulnerability $\rightarrow$ pipeline tool $\rightarrow$ countermeasure}
+
+\begin{tcolorbox}[common, tabularx={Y Y Y}]
+\textbf{Class} & \textbf{Tool in CI} & \textbf{Fix in repo} \\
+Secrets in git & Gitleaks & \texttt{.env.example}, \texttt{\$\{VAR\}}, gitignore \\
+npm CVEs & npm audit + Trivy fs & Pin upgrades (prod); artifacts here \\
+Bad code patterns & Semgrep & Remove \texttt{vulnerable.js} in prod \\
+Dirty image layers & Trivy image & \texttt{Dockerfile.hardened} \\
+Unknown inventory & CycloneDX SBOM & Keep \texttt{sbom-*.json} 90 days \\
+Broken auth / XSS UI & Jest + Vitest & Tests must pass before image push \\
+Missing HTTP headers & ZAP (scheduled) & nginx security headers \\
+Deploy dead / leaked env & deploy.yml health + secrets check & Skip deploy if CI failed or secrets empty
+\end{tcolorbox}
+
+\section{Evidence (GitHub Actions)}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/00-actions-all-runs.png}
+\figcap{Figure 1. Actions home: CI and Deploy runs (6 Nov 2026).}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/01-ci-run-lockfile-fail.png}
+\figcap{Figure 2. CI run \#1 --- Security Scans failed on \texttt{npm ci}; Build skipped (24s).}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/02-ci-run-after-lockfiles.png}
+\figcap{Figure 3. CI run \#2 --- scans green; tests and hardened builds ran (3m 58s).}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/04-workflows-folder.png}
+\figcap{Figure 4. Workflow files: \texttt{ci.yml}, \texttt{deploy.yml}, \texttt{sbom.yml}, \texttt{security.yml}.}
+\end{figure}
+
+\section{How to screenshot each tool}
+
+Sign in to GitHub. Open CI run \#2. Click the job, then the step.
+
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+  \item \textbf{Gitleaks} --- job Security Scans $\rightarrow$ \texttt{Run Gitleaks}
+  \item \textbf{npm audit} --- \texttt{Run npm audit (client)} and \texttt{(server)}
+  \item \textbf{Trivy fs} --- \texttt{Run Trivy filesystem scan (client/server)}
+  \item \textbf{Semgrep} --- \texttt{Run Semgrep}
+  \item \textbf{Jest / Vitest} --- job Build \& Test $\rightarrow$ \texttt{Run server tests} / \texttt{Run client tests}
+  \item \textbf{Trivy image} --- \texttt{Scan client/server image with Trivy}
+  \item \textbf{SBOM} --- \texttt{Generate SBOM for client/server}
+  \item \textbf{ZAP} --- workflow \textbf{Scheduled Security Scans} (Run workflow) $\rightarrow$ \texttt{Run ZAP baseline scan}
+\end{itemize}
+
+Also download artifacts \texttt{security-scan-results} and \texttt{image-scan-results} from the run Summary page.
+
+\section{Recommendations}
+
+\begin{enumerate}[leftmargin=1.2em,itemsep=3pt]
+  \item Keep \texttt{permissions.packages: write} so GHCR push succeeds.
+  \item For a real product: Trivy \texttt{exit-code: 1} and Jenkins \texttt{FAIL\_ON\_CRITICAL=true}.
+  \item Store \texttt{JWT\_SECRET}, \texttt{DATABASE\_URL}, \texttt{POSTGRES\_PASSWORD} in GitHub Environments.
+  \item Raise Jest coverage toward 70\%; add Playwright to CI after Compose secrets exist.
+  \item Do not treat a green honeypot pipeline as production-safe.
+\end{enumerate}
+
+\vspace{0.8em}
+{\color{muted}\small Repository: \url{https://github.com/belgacem-balti/honeypot} \quad Date: 6 November 2026.}
+
+\end{document}

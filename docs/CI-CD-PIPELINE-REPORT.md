@@ -94,6 +94,28 @@ For this honeypot, the extra goal is **education**: show both a broken baseline 
 
 ---
 
+## 4.1 Vulnerabilities and countermeasures
+
+The honeypot keeps insecure files so scanners have targets. The pipeline **detects**. The hardened path **contains**.
+
+| Vulnerability | Severity | Detector | Countermeasure |
+| --- | --- | --- | --- |
+| Hardcoded JWT / DB URL / AWS keys (`secrets.js`, `.env.production`) | CRITICAL | Gitleaks, Trivy secret | gitignore `.env`; Compose `${VAR}`; no `ENV` secrets in hardened Docker |
+| axios 0.21.1 (CVE-2021-3749), jwt 8.5.1, lodash, minimist, node-serialize | HIGH/CRITICAL | npm audit, Trivy fs | Upgrade in production; here pins stay so the demo still reports |
+| Command injection, SQLi, path traversal, `eval` (`vulnerable.js`) | CRITICAL | Semgrep | Parameterized Prisma only; ban `exec`/`eval`; delete this router in prod |
+| MD5/SHA1, hardcoded crypto key (`weak-crypto.js`) | HIGH/CRITICAL | Semgrep | bcrypt already used in auth; `crypto.randomBytes` for tokens |
+| Root, Node 14, `chmod 777`, secrets in Dockerfile | CRITICAL | Trivy misconfig / image | `Dockerfile.hardened`: node 20, UID 1001, HEALTHCHECK, dumb-init |
+| Privileged Compose, Docker socket, host root mount | CRITICAL | Trivy config | `docker-compose.prod.yml`: no privileged, internal DB network |
+| Missing CSP / X-Frame-Options | HIGH | ZAP, header review | `nginx.conf` + `nginx.conf.hardened` |
+| No component inventory | HIGH (process) | — | CycloneDX SBOM on each image |
+| Broken auth still ships | HIGH | Jest / Vitest | Tests must pass before image push |
+
+Honeypot policy: Trivy `exit-code: 0` so the demo finishes. Production policy: fail on CRITICAL.
+
+Overleaf source (same layout as the dashboard): `docs/overleaf/main.tex`.
+
+---
+
 ## 5. Risks the pipeline is meant to reduce
 
 ### 5.1 Application / honeypot risks (the “what if we shipped this”)
