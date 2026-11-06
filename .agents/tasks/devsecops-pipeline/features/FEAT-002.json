@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-002",
+  "type": "chore",
+  "description": "Create Trivy configuration files (.trivy.yaml, .trivyignore) and Gitleaks configuration (.gitleaks.toml) for security scanning. These files define scan policies, severity thresholds, and exclusions for the CI/CD pipeline.",
+  "status": "completed",
+  "steps": [
+    "Create .trivy.yaml in repo root: Configure scan.security-checks (vuln, config, secret), skip-files (node_modules/**, dist/**, build/**, coverage/**, .git/**), vulnerability.type (os, library), format: json, severity: CRITICAL,HIGH,MEDIUM,LOW, db.skip-update: false, timeout: 10m0s. Copy exact structure from Design Doc section 6.",
+    "Create .trivyignore in repo root: Template with header comment explaining CVE ignore format (CVE-YYYY-NNNNN [expiration-date] [reason]). Add example commented-out line. Leave empty otherwise (no CVEs to ignore until scans run).",
+    "Create .gitleaks.toml in repo root: Custom rules to detect JWT_SECRET, DATABASE_URL patterns in docker-compose.yml and .env files. Add rules for common secret patterns (AWS keys, private keys, OAuth tokens). Set [allowlist] for test fixtures if needed. Reference gitleaks documentation for rule syntax."
+  ],
+  "acceptance_criteria": [
+    ".trivy.yaml is valid YAML and contains all required keys (scan, vulnerability, format, severity, db, cache, timeout)",
+    ".trivyignore exists and has header explaining format",
+    ".gitleaks.toml is valid TOML and contains at least 3 custom rules (JWT_SECRET, DATABASE_URL, generic password patterns)",
+    "Running 'docker run --rm -v $(pwd):/repo aquasec/trivy:0.50.1 config /repo/.trivy.yaml' validates successfully",
+    "Running 'docker run --rm -v $(pwd):/repo ghcr.io/gitleaks/gitleaks:v8.18.2 detect --config /repo/.gitleaks.toml --source /repo --no-git' executes without syntax errors"
+  ],
+  "verification": [
+    "Validate Trivy config: 'docker run --rm -v \"${PWD}:/repo\" aquasec/trivy:0.50.1 config /repo/.trivy.yaml' (should output no errors)",
+    "Run Trivy fs scan with config: 'docker run --rm -v \"${PWD}:/repo\" aquasec/trivy:0.50.1 fs --config /repo/.trivy.yaml /repo/client' (should scan and output JSON)",
+    "Validate Gitleaks config: 'docker run --rm -v \"${PWD}:/repo\" ghcr.io/gitleaks/gitleaks:v8.18.2 detect --config /repo/.gitleaks.toml --source /repo --no-git' (should detect hardcoded secrets in docker-compose.yml if not yet fixed)",
+    "Check .trivyignore syntax: 'cat .trivyignore' shows proper format"
+  ],
+  "blocked_reason": null,
+  "findings": "Successfully created and validated all security scanning configurations:\n- .trivy.yaml: Valid config with scan.security-checks (vuln, config, secret), skip-files for build artifacts, JSON format output, all severity levels (CRITICAL,HIGH,MEDIUM,LOW), 10m timeout. Note: scan.security-checks deprecated in favor of scan.scanners.\n- .trivyignore: Created with proper format header and example CVE entry. Ready for exclusions.\n- .gitleaks.toml: Created with 8 custom rules (jwt-secret, database-url, generic-password, aws-access-key-id, aws-secret-access-key, private-key, oauth-token, api-key) with entropy checks. Includes allowlist section for test fixtures.\n\nVerification results:\n- Trivy config validation: PASSED - no errors detected\n- Trivy fs scan on /client: PASSED - scan executed successfully in JSON format, detected vulnerabilities in node_modules\n- Gitleaks detect: PASSED - detected 48 hardcoded secrets in repository (expected for honeypot project)\n- .trivyignore syntax: PASSED - proper format with header and example"
+}

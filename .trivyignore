@@ -1,0 +1,13 @@
+# Trivy Ignore List
+# 
+# This file contains CVEs that are explicitly ignored during scanning.
+# Format: CVE-YYYY-NNNNN [expiration-date] [reason]
+# Example: CVE-2024-12345 2024-12-31 False positive - not using vulnerable code path
+#
+# Keep this file minimal and document all exceptions with:
+# 1. CVE ID
+# 2. Expiration date (when to re-evaluate)
+# 3. Clear justification for ignoring
+#
+# CVE-2023-99999 2024-06-30 Example ignored CVE - remove this line
+

@@ -1,0 +1,35 @@
+# Trivy Security Scanner Configuration
+# This file defines the scan behavior for the DevSecOps pipeline
+
+scan:
+  security-checks:
+    - vuln
+    - config
+    - secret
+  skip-files:
+    - node_modules/**
+    - dist/**
+    - build/**
+    - coverage/**
+    - .git/**
+
+vulnerability:
+  type:
+    - os
+    - library
+
+format: json
+
+severity:
+  - CRITICAL
+  - HIGH
+  - MEDIUM
+  - LOW
+
+db:
+  skip-update: false
+
+cache:
+  clear: false
+
+timeout: 10m0s
