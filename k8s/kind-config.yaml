@@ -1,0 +1,30 @@
+# kind cluster for the TaskFlow honeypot lab.
+# The default CNI (kindnet) does not enforce NetworkPolicy, so it is disabled
+# and Calico is installed by scripts/kind-up.sh instead.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: honeypot
+networking:
+  disableDefaultCNI: true
+  # Calico's default IP pool
+  podSubnet: 192.168.0.0/16
+  serviceSubnet: 10.96.0.0/12
+nodes:
+  - role: control-plane
+    image: kindest/node:v1.32.2
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    # ingress-nginx (kind provider) listens on the host ports of the node labelled ingress-ready
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+  - role: worker
+    image: kindest/node:v1.32.2
