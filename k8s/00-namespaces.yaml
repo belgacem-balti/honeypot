@@ -1,0 +1,51 @@
+# Namespaces for the TaskFlow honeypot lab.
+#
+# honeypot-vuln / honeypot-fixed run the application and enforce the Pod
+# Security Admission "restricted" profile: pods running as root, with
+# privilege escalation, host namespaces or hostPath volumes are rejected.
+#
+# security-monitoring hosts the Wazuh agent DaemonSet (k8s/50-wazuh-agent.yaml).
+# DOCUMENTED EXCEPTION: the agent must read node logs through hostPath volumes,
+# which both "baseline" and "restricted" forbid, so this namespace enforces
+# "privileged". "restricted" stays in audit/warn mode so every deviation is
+# still reported. Keep this namespace limited to the monitoring agent.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: honeypot-vuln
+  labels:
+    app.kubernetes.io/part-of: taskflow
+    taskflow/variant: vuln
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: v1.32
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: v1.32
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: v1.32
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: honeypot-fixed
+  labels:
+    app.kubernetes.io/part-of: taskflow
+    taskflow/variant: fixed
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: v1.32
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: v1.32
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: v1.32
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: security-monitoring
+  labels:
+    app.kubernetes.io/part-of: taskflow
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: v1.32
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: v1.32
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: v1.32
