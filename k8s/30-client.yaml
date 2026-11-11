@@ -1,0 +1,127 @@
+# TaskFlow web client (React build served by nginx-unprivileged, UID 101, port 8080).
+# Namespace-less: apply with -n honeypot-vuln or -n honeypot-fixed.
+#
+# The Ingress host is taskflow.localhost. ingress-nginx rejects the same host/path
+# in two namespaces, so change the host when deploying the second variant (k8s/README.md).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: client
+  labels:
+    app.kubernetes.io/name: client
+    app.kubernetes.io/part-of: taskflow
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client
+  labels:
+    app.kubernetes.io/name: client
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: taskflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: client
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: client
+        app.kubernetes.io/component: frontend
+        app.kubernetes.io/part-of: taskflow
+    spec:
+      serviceAccountName: client
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: client
+          # Local image loaded with "kind load docker-image"; see k8s/README.md to switch to GHCR tags
+          image: taskflow-client:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            # nginx-unprivileged writes its pid and *_temp directories under /tmp
+            - name: tmp
+              mountPath: /tmp
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+        - name: nginx-cache
+          emptyDir:
+            sizeLimit: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: client
+  labels:
+    app.kubernetes.io/name: client
+    app.kubernetes.io/part-of: taskflow
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: client
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: client
+  labels:
+    app.kubernetes.io/name: client
+    app.kubernetes.io/part-of: taskflow
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: taskflow.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: client
+                port:
+                  name: http
