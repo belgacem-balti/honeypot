@@ -1,0 +1,176 @@
+# NetworkPolicies for the TaskFlow namespaces. Namespace-less: apply with
+# -n honeypot-vuln or -n honeypot-fixed (enforced by Calico, see scripts/kind-up.sh).
+#
+# Model: deny everything, then allow only
+#   ingress-nginx controller -> client:8080
+#   client                   -> server:5000
+#   server                   -> postgres:5432
+#   every pod                -> cluster DNS (53)
+#
+# Quarantine: Kubernetes NetworkPolicies are additive (a policy can only allow),
+# so a deny-only policy on quarantine=true would NOT cancel the allows below.
+# Every allow therefore excludes quarantine=true pods, both as target and as
+# peer. Labelling a pod quarantine=true leaves it covered only by
+# default-deny-all and quarantine-isolate: all its traffic is dropped.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  labels:
+    app.kubernetes.io/part-of: taskflow
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: quarantine-isolate
+  labels:
+    app.kubernetes.io/part-of: taskflow
+spec:
+  # Explicit marker for incident response (docs/runbook-incident.md). It has no
+  # rules: isolation comes from the NotIn exclusions in every allow policy.
+  podSelector:
+    matchLabels:
+      quarantine: "true"
+  policyTypes: ["Ingress", "Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  labels:
+    app.kubernetes.io/part-of: taskflow
+spec:
+  podSelector:
+    matchExpressions:
+      - { key: quarantine, operator: NotIn, values: ["true"] }
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: client-allow-from-ingress
+  labels:
+    app.kubernetes.io/part-of: taskflow
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: client
+    matchExpressions:
+      - { key: quarantine, operator: NotIn, values: ["true"] }
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/component: controller
+      ports:
+        - { protocol: TCP, port: 8080 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: client-allow-egress-to-server
+  labels:
+    app.kubernetes.io/part-of: taskflow
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: client
+    matchExpressions:
+      - { key: quarantine, operator: NotIn, values: ["true"] }
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: server
+            matchExpressions:
+              - { key: quarantine, operator: NotIn, values: ["true"] }
+      ports:
+        - { protocol: TCP, port: 5000 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: server-allow-from-client
+  labels:
+    app.kubernetes.io/part-of: taskflow
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: server
+    matchExpressions:
+      - { key: quarantine, operator: NotIn, values: ["true"] }
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: client
+            matchExpressions:
+              - { key: quarantine, operator: NotIn, values: ["true"] }
+      ports:
+        - { protocol: TCP, port: 5000 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: server-allow-egress-to-postgres
+  labels:
+    app.kubernetes.io/part-of: taskflow
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: server
+    matchExpressions:
+      - { key: quarantine, operator: NotIn, values: ["true"] }
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres
+            matchExpressions:
+              - { key: quarantine, operator: NotIn, values: ["true"] }
+      ports:
+        - { protocol: TCP, port: 5432 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-allow-from-server
+  labels:
+    app.kubernetes.io/part-of: taskflow
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+    matchExpressions:
+      - { key: quarantine, operator: NotIn, values: ["true"] }
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: server
+            matchExpressions:
+              - { key: quarantine, operator: NotIn, values: ["true"] }
+      ports:
+        - { protocol: TCP, port: 5432 }
