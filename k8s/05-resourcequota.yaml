@@ -1,0 +1,22 @@
+# ResourceQuota for the TaskFlow namespaces. Namespace-less: apply with
+# -n honeypot-vuln or -n honeypot-fixed.
+#
+# Because the quota tracks requests.* and limits.*, the API server rejects any
+# pod that does not declare CPU/memory requests and limits ("must specify ...").
+# Pod Security Admission does not check resources, so this is what blocks a
+# pod without limits (tested by scripts/k8s-tests.sh).
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: taskflow-quota
+  labels:
+    app.kubernetes.io/part-of: taskflow
+spec:
+  hard:
+    pods: "20"
+    requests.cpu: "4"
+    requests.memory: 4Gi
+    limits.cpu: "8"
+    limits.memory: 8Gi
+    persistentvolumeclaims: "5"
+    requests.storage: 10Gi
