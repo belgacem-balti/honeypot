@@ -1,0 +1,60 @@
+# Wazuh manager, single node, outside the kind cluster.
+#
+# Only the manager runs here: it receives agent events (1514), enrols agents
+# (1515), applies the TaskFlow decoders/rules and writes alerts to
+# /var/ossec/logs/alerts/alerts.json. Indexer and dashboard are not included
+# (see wazuh/README.md).
+#
+# The manager joins the Docker network created by kind ("kind") with a fixed
+# address, so pods reach it directly and k8s/41-networkpolicies-monitoring.yaml
+# can allow exactly that address.
+#
+# Required environment (never committed; put them in wazuh/.env, git-ignored):
+#   WAZUH_REGISTRATION_PASSWORD   agent enrollment password
+#   WAZUH_API_PASSWORD            manager API password
+# Optional:
+#   WAZUH_MANAGER_IP              default 172.18.0.100, must be inside the kind network subnet
+#
+# Usage: docker compose -f wazuh/docker-compose.yml up -d   (after scripts/kind-up.sh)
+services:
+  wazuh.manager:
+    image: wazuh/wazuh-manager:4.14.10
+    hostname: wazuh.manager
+    restart: unless-stopped
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 655360
+        hard: 655360
+    environment:
+      WAZUH_REGISTRATION_PASSWORD: ${WAZUH_REGISTRATION_PASSWORD:?set WAZUH_REGISTRATION_PASSWORD}
+      API_USERNAME: wazuh-wui
+      API_PASSWORD: ${WAZUH_API_PASSWORD:?set WAZUH_API_PASSWORD}
+    ports:
+      # Bound to localhost only: agents in kind use the "kind" network address
+      - "127.0.0.1:1514:1514"
+      - "127.0.0.1:1515:1515"
+      - "127.0.0.1:55000:55000"
+    volumes:
+      - wazuh_etc:/var/ossec/etc
+      - wazuh_logs:/var/ossec/logs
+      - wazuh_queue:/var/ossec/queue
+      - wazuh_api_configuration:/var/ossec/api/configuration
+      - ./rules/taskflow_decoders.xml:/var/ossec/etc/decoders/taskflow_decoders.xml:ro
+      - ./rules/taskflow_rules.xml:/var/ossec/etc/rules/taskflow_rules.xml:ro
+      - ./config/enable-authd-password.sh:/entrypoint-scripts/10-enable-authd-password.sh:ro
+    networks:
+      kind:
+        ipv4_address: ${WAZUH_MANAGER_IP:-172.18.0.100}
+
+networks:
+  kind:
+    external: true
+
+volumes:
+  wazuh_etc:
+  wazuh_logs:
+  wazuh_queue:
+  wazuh_api_configuration:

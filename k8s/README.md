@@ -18,6 +18,7 @@ The application manifests have no `namespace:` field: apply them to
 | `30-client.yaml` | nginx-unprivileged (UID 101), Service `client:8080`, Ingress `taskflow.localhost` |
 | `40-networkpolicies.yaml` | Default deny, DNS, Ingress -> client -> server -> postgres, quarantine |
 | `41-networkpolicies-monitoring.yaml` | Same model for `security-monitoring`: Wazuh agent -> manager 1514/1515 |
+| `50-wazuh-agent.yaml` | Wazuh agent DaemonSet in `security-monitoring` (setup in `wazuh/README.md`) |
 
 `kubernetes-secrets.yaml` at the repository root is a deliberately insecure
 teaching target (secrets in clear). It is not part of this deployment and must

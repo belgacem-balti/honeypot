@@ -1,0 +1,19 @@
+<!--
+  TaskFlow server decoders (mounted in /var/ossec/etc/decoders/).
+
+  The agent reads container logs from /var/log/pods/, where the container
+  runtime prefixes every line (CRI format):
+    2026-11-11T10:00:00.123456789Z stdout F {"app":"taskflow-server",...}
+  taskflow-cri strips that prefix, then the JSON decoder extracts the fields
+  documented in wazuh/README.md. A raw JSON line without the prefix (for
+  example in wazuh-logtest) is handled by Wazuh's built-in "json" decoder; the
+  rules match on the "app" field, so both paths reach the same rules.
+-->
+<decoder name="taskflow-cri">
+  <prematch type="pcre2">^\S+ (?:stdout|stderr) [FP] (?=\{\s*"app"\s*:\s*"taskflow-server")</prematch>
+</decoder>
+
+<decoder name="taskflow-server">
+  <parent>taskflow-cri</parent>
+  <plugin_decoder offset="after_parent">JSON_Decoder</plugin_decoder>
+</decoder>
