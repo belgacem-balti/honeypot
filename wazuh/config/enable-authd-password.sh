@@ -20,3 +20,14 @@ sed -i 's#<use_password>no</use_password>#<use_password>yes</use_password>#' "$O
 grep -q '<use_password>yes</use_password>' "$OSSEC_CONF" \
   || { echo "[authd] could not enable use_password in $OSSEC_CONF" >&2; exit 1; }
 echo "[authd] enrollment password enabled"
+
+# Kubernetes agents lose their key (client.keys) when the pod is recreated and
+# re-enrol with the same name (k8s-<node>). By default the manager refuses a
+# duplicate name for 1 h, leaving the node unmonitored. Allow the replacement
+# immediately; enrollment still requires the password above.
+if ! grep -q '<force>' "$OSSEC_CONF"; then
+  sed -i 's#<use_password>yes</use_password>#<use_password>yes</use_password>\n    <force>\n      <enabled>yes</enabled>\n      <key_mismatch>yes</key_mismatch>\n      <disconnected_time enabled="no">0</disconnected_time>\n      <after_registration_time>0</after_registration_time>\n    </force>#' "$OSSEC_CONF"
+fi
+grep -q '<force>' "$OSSEC_CONF" \
+  || { echo "[authd] could not configure agent replacement in $OSSEC_CONF" >&2; exit 1; }
+echo "[authd] re-enrolment of recreated agents enabled"

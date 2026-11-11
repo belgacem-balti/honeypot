@@ -90,34 +90,39 @@ Prerequisites: the kind cluster from `scripts/kind-up.sh` (it creates the
 `kind` Docker network) and `k8s/00-namespaces.yaml` applied.
 
 ```bash
-# 1. Check the kind network subnet; WAZUH_MANAGER_IP must be inside it
-docker network inspect kind -f '{{(index .IPAM.Config 0).Subnet}}'
+# 1. Pick the manager address inside the IPv4 subnet of the kind network
+#    (172.18.0.0/16 on many machines, but not all: 172.20.0.0/16 on the test machine)
+docker network inspect kind -f '{{range .IPAM.Config}}{{.Subnet}} {{end}}'
+WAZUH_MANAGER_IP=172.18.0.100        # adapt to the subnet above
 
 # 2. Secrets for the manager (wazuh/.env is git-ignored; FAKE- values for the lab)
 #    The API password must have upper/lower case, digit and symbol, 8+ characters.
-cat > wazuh/.env <<'EOF'
+cat > wazuh/.env <<EOF
 WAZUH_REGISTRATION_PASSWORD=FAKE-wazuh-enrollment-password
 WAZUH_API_PASSWORD=FAKE-Api-Passw0rd.
+WAZUH_MANAGER_IP=$WAZUH_MANAGER_IP
 EOF
 
 # 3. Manager
 docker compose -f wazuh/docker-compose.yml up -d
-docker compose -f wazuh/docker-compose.yml logs -f wazuh.manager   # wait for "wazuh-analysisd ... started"
+M=$(docker compose -f wazuh/docker-compose.yml ps -q wazuh.manager)   # needs wazuh/.env
+docker exec "$M" /var/ossec/bin/wazuh-control status | grep -E 'analysisd|authd|remoted'   # all "is running" (~10-30 s)
 
 # 4. Agent (same enrollment password as the manager)
 kubectl -n security-monitoring create secret generic wazuh-agent-enrollment \
   --from-literal=WAZUH_REGISTRATION_PASSWORD='FAKE-wazuh-enrollment-password'
-kubectl apply -f k8s/41-networkpolicies-monitoring.yaml
-kubectl apply -f k8s/50-wazuh-agent.yaml
+# the manifests carry the default address 172.18.0.100: substitute yours
+for f in k8s/41-networkpolicies-monitoring.yaml k8s/50-wazuh-agent.yaml; do
+  sed "s/172\.18\.0\.100/$WAZUH_MANAGER_IP/" "$f" | kubectl apply -f -
+done
 kubectl -n security-monitoring rollout status daemonset/wazuh-agent
 
 # 5. Agents registered on the manager
-docker exec $(docker compose -f wazuh/docker-compose.yml ps -q wazuh.manager) /var/ossec/bin/agent_control -l
+docker exec "$M" /var/ossec/bin/agent_control -l   # k8s-<node> agents "Active"
 ```
 
-If you change `WAZUH_MANAGER_IP`, update `WAZUH_MANAGER_SERVER` in
-`k8s/50-wazuh-agent.yaml` and narrow the `ipBlock` in
-`k8s/41-networkpolicies-monitoring.yaml` to `<ip>/32`.
+On Windows Git Bash, prefix the `docker exec` commands with
+`MSYS_NO_PATHCONV=1`, otherwise `/var/ossec/...` is rewritten to a Windows path.
 
 ## Testing the rules
 
@@ -219,6 +224,19 @@ Two points to settle with the owner of the server:
 - **Network path.** Agent traffic leaves the node with SNAT to the node
   address on the `kind` network. This works because the manager is on the same
   Docker network; a remote manager would need routing and TLS considerations.
+- **Manager logs without indexer.** Filebeat in the manager image keeps
+  logging `lookup wazuh.indexer ... no such host`; this is expected here and
+  does not affect alerts. After a container restart the image init also logs
+  `0-wazuh-init: exited 1` (copy of `var/multigroups`) and the daemons still
+  start; check with `wazuh-control status`.
+- **Agents are ephemeral.** A recreated agent pod has no key and re-enrols
+  under the same name (`k8s-<node>`); `config/enable-authd-password.sh`
+  allows that replacement (still password-protected), otherwise the manager
+  refuses the duplicate name for 1 h and the node is not monitored. Old agent
+  IDs show as disconnected until purged.
+- **New pod log files** are picked up within 5 s
+  (`logcollector.vcheck_files=5`) and read from the point they are found:
+  lines written in the first seconds of a new pod can still be missed.
 - **Detection by pattern.** The SQLi/XSS regexes catch common payloads, not
   every encoding. A blocked request (WAF, validation) still raises an alert:
   these are attempt alerts, not proof of compromise.

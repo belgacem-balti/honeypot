@@ -30,6 +30,11 @@ metadata:
     app.kubernetes.io/name: wazuh-agent
     app.kubernetes.io/part-of: taskflow
 data:
+  # Wildcard locations are re-scanned every 64 s by default, and a newly found
+  # file is read from its end: the first lines of a new pod (often right after
+  # a redeploy) would be lost. Re-scan every 5 s.
+  local_internal_options.conf: |
+    logcollector.vcheck_files=5
   # Copied to /var/ossec/etc/ossec.conf by the image init script, which replaces
   # the CHANGE_* placeholders with the WAZUH_* environment variables.
   ossec.conf: |
@@ -64,12 +69,16 @@ data:
       <localfile>
         <log_format>syslog</log_format>
         <location>/var/log/pods/honeypot-*_server-*/server/*.log</location>
+        <!-- Do not skip lines written while the agent was restarting -->
+        <only-future-events>no</only-future-events>
       </localfile>
 
       <!-- nginx access/error logs of the client -->
       <localfile>
         <log_format>syslog</log_format>
         <location>/var/log/pods/honeypot-*_client-*/client/*.log</location>
+        <!-- Do not skip lines written while the agent was restarting -->
+        <only-future-events>no</only-future-events>
       </localfile>
 
       <rootcheck>
@@ -125,6 +134,7 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: WAZUH_MANAGER_SERVER
+              # WAZUH_MANAGER_IP: substituted at apply time, see wazuh/README.md
               value: "172.18.0.100"
             - name: WAZUH_MANAGER_PORT
               value: "1514"
@@ -177,6 +187,10 @@ spec:
             - name: agent-config
               mountPath: /wazuh-config-mount/etc/ossec.conf
               subPath: ossec.conf
+              readOnly: true
+            - name: agent-config
+              mountPath: /wazuh-config-mount/etc/local_internal_options.conf
+              subPath: local_internal_options.conf
               readOnly: true
             - name: varlogpods
               mountPath: /var/log/pods

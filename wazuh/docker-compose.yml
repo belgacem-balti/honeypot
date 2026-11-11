@@ -38,10 +38,19 @@ services:
       - "127.0.0.1:1515:1515"
       - "127.0.0.1:55000:55000"
     volumes:
+      # Same persistent paths as the official single-node compose: the image
+      # init fails on restart if one of them is not a volume.
+      - wazuh_api_configuration:/var/ossec/api/configuration
       - wazuh_etc:/var/ossec/etc
       - wazuh_logs:/var/ossec/logs
       - wazuh_queue:/var/ossec/queue
-      - wazuh_api_configuration:/var/ossec/api/configuration
+      - wazuh_var_multigroups:/var/ossec/var/multigroups
+      - wazuh_integrations:/var/ossec/integrations
+      - wazuh_active_response:/var/ossec/active-response/bin
+      - wazuh_agentless:/var/ossec/agentless
+      - wazuh_wodles:/var/ossec/wodles
+      - filebeat_etc:/etc/filebeat
+      - filebeat_var:/var/lib/filebeat
       - ./rules/taskflow_decoders.xml:/var/ossec/etc/decoders/taskflow_decoders.xml:ro
       - ./rules/taskflow_rules.xml:/var/ossec/etc/rules/taskflow_rules.xml:ro
       - ./config/enable-authd-password.sh:/entrypoint-scripts/10-enable-authd-password.sh:ro
@@ -54,7 +63,14 @@ networks:
     external: true
 
 volumes:
+  wazuh_api_configuration:
   wazuh_etc:
   wazuh_logs:
   wazuh_queue:
-  wazuh_api_configuration:
+  wazuh_var_multigroups:
+  wazuh_integrations:
+  wazuh_active_response:
+  wazuh_agentless:
+  wazuh_wodles:
+  filebeat_etc:
+  filebeat_var:
