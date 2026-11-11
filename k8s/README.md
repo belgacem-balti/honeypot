@@ -224,9 +224,11 @@ its ReplicaSet, so no replacement is started; see `docs/runbook-incident.md`.
 - **`security-monitoring` is privileged.** The Wazuh agent needs `hostPath`
   to read node logs, which `baseline` and `restricted` forbid. Keep the
   namespace limited to the agent; `restricted` stays in audit/warn mode.
-- **Wazuh egress uses a broad `ipBlock`** (`172.18.0.0/16`, the usual kind
-  Docker network). Check it with
-  `docker network inspect kind -f '{{(index .IPAM.Config 0).Subnet}}'` and narrow
+- **The Wazuh manager address is fixed** (`172.18.0.100/32` in the agent
+  egress policy and DaemonSet). The kind Docker network is not always
+  `172.18.0.0/16` (it was `172.20.0.0/16` on the test machine); substitute the
+  address at apply time as shown in `wazuh/README.md`. Check it with
+  `docker network inspect kind -f '{{range .IPAM.Config}}{{.Subnet}} {{end}}'` and narrow
   it to the manager address (`/32`).
 - **Schema without Prisma history.** Loading `migration.sql` through the
   postgres entrypoint does not create the `_prisma_migrations` table; a later

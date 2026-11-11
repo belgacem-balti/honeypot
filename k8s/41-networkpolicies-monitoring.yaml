@@ -2,11 +2,11 @@
 # k8s/50-wazuh-agent.yaml). Kept apart from 40-networkpolicies.yaml because these
 # objects carry an explicit namespace, which "kubectl apply -n <app ns>" rejects.
 #
-# The Wazuh manager runs outside the cluster (wazuh/docker-compose.yml). The
-# ipBlock below is the default Docker network used by kind ("kind", 172.18.0.0/16).
-# Check yours with:
-#   docker network inspect kind -f '{{(index .IPAM.Config 0).Subnet}}'
-# and narrow it to the manager's address (/32) once known.
+# The Wazuh manager runs outside the cluster (wazuh/docker-compose.yml) with a
+# fixed address on the "kind" Docker network: 172.18.0.100 by default. The kind
+# subnet differs between machines (check it with
+#   docker network inspect kind -f '{{range .IPAM.Config}}{{.Subnet}} {{end}}'
+# ), so apply this file with the address substituted, see wazuh/README.md.
 # The agent must NOT use hostNetwork, otherwise these policies do not apply to it.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -74,7 +74,8 @@ spec:
   egress:
     - to:
         - ipBlock:
-            cidr: 172.18.0.0/16
+            # Manager address only (WAZUH_MANAGER_IP)
+            cidr: 172.18.0.100/32
       ports:
         # 1514: agent events, 1515: agent enrollment (authd)
         - { protocol: TCP, port: 1514 }
