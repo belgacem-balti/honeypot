@@ -67,7 +67,7 @@
 \setlist[enumerate]{leftmargin=1.15em,itemsep=3pt,topsep=3pt}
 \renewcommand{\arraystretch}{1.18}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
-\newcommand{\thc}[1]{\textcolor{headtxt}{\textbf{#1}}}}
+\newcommand{\thc}[1]{\textcolor{headtxt}{\textbf{#1}}}
 \newcommand{\HRule}{\par\noindent{\color{line}\rule{\linewidth}{0.6pt}}\par}
 
 \newcommand{\kpibox}[3]{%
@@ -91,7 +91,7 @@
 {\color{headtxt!85}\large TaskFlow honeypot --- organisation, tools, vulnerabilities, countermeasures}\\[8pt]
 {\small\color{headtxt!70}
 GitHub: \url{https://github.com/belgacem-balti/honeypot}
-\quad 6 November 2026}
+\quad 6 November 2026 (updated 11 November 2026)}
 \end{tcolorbox}
 
 \vspace{0.7em}
@@ -123,7 +123,8 @@ The rest of this report is ordered as a reader would audit the project:
 (4)~why each tool exists,
 (5)~vulnerability $\rightarrow$ countermeasure,
 (6)~screenshots with a reading guide,
-(7)~recommendations.
+(7)~Kubernetes hardening,
+(8)~recommendations.
 
 \section{GitHub Actions results}
 \label{sec:results}
@@ -226,7 +227,7 @@ The pipeline \textbf{detects}. The hardened path \textbf{contains}. Honeypot pol
 \midrule
 Hardcoded JWT / DB URL / AWS in \texttt{secrets.js}, \texttt{.env.production} & C & Gitleaks; gitignore \texttt{.env}; Compose \texttt{\$\{VAR\}} \\
 \texttt{ENV} secrets in \texttt{Dockerfile.insecure} & C & Hardened image: no secret \texttt{ENV} \\
-Plain Kubernetes secrets YAML & C & External / sealed secrets (documented) \\
+Plain Kubernetes secrets YAML & C & \texttt{kubectl create secret}, nothing committed (\texttt{k8s/README.md}); sealed/external secrets for production \\
 \texttt{backup.sql} dump with keys & C & Keep out of git; Gitleaks on history \\
 \bottomrule
 \end{tabularx}
@@ -414,6 +415,90 @@ ZAP & OWASP ZAP DAST (other workflow) & \texttt{Run ZAP baseline scan} \\
 
 On the run Summary, also download artifacts \texttt{security-scan-results} and \texttt{image-scan-results} and screenshot the JSON.
 
+\FloatBarrier
+\section{Kubernetes hardening (kind)}
+\label{sec:k8s}
+Before this work the repository had no Kubernetes manifests, except \texttt{kubernetes-secrets.yaml}, which stays as a deliberately insecure teaching target.
+The branch \texttt{feat/k8s-hardening} adds a local kind cluster and hardened manifests under \texttt{k8s/}.
+The two application namespaces, \texttt{honeypot-vuln} and \texttt{honeypot-fixed}, receive the same manifests (applied with \texttt{kubectl -n}).
+
+\begin{table}[H]
+\centering
+\caption{Kubernetes controls, by layer.}
+\label{tab:k8s}
+\begin{tabularx}{\textwidth}{@{}l Y l@{}}
+\toprule
+\rowcolor{headrow}\thc{Layer} & \thc{Control} & \thc{File} \\
+\midrule
+CNI & Calico replaces kindnet, which does not enforce NetworkPolicy & \texttt{kind-config.yaml}, \texttt{kind-up.sh} \\
+Admission & Pod Security \texttt{restricted} enforced on both app namespaces; \texttt{security-monitoring} is \texttt{privileged} (Wazuh needs \texttt{hostPath}) with \texttt{restricted} kept in audit/warn & \texttt{00-namespaces.yaml} \\
+Resources & ResourceQuota: a pod without requests/limits is rejected & \texttt{05-resourcequota.yaml} \\
+Workloads & Non-root (postgres 999, server 1001, client 101), no privilege escalation, read-only root filesystem, capabilities drop ALL, seccomp \texttt{RuntimeDefault}, \texttt{emptyDir} for \texttt{/tmp}, probes, limits, dedicated ServiceAccount without token & \texttt{10/20/30-*.yaml} \\
+Network & Default deny (ingress + egress), then only Ingress $\rightarrow$ client:8080, client $\rightarrow$ server:5000, server $\rightarrow$ postgres:5432, DNS; Wazuh agent $\rightarrow$ manager 1514/1515 & \texttt{40/41-*.yaml} \\
+Incident & Label \texttt{quarantine=true} cuts all traffic of a pod & \texttt{40-networkpolicies.yaml} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Threat to control mapping}
+\begin{table}[H]
+\centering
+\caption{What the cluster controls change for the honeypot vulnerabilities.}
+\begin{tabularx}{\textwidth}{@{}Y Y@{}}
+\toprule
+\rowcolor{headrow}\thc{Threat} & \thc{Kubernetes control} \\
+\midrule
+RCE in the server (\texttt{node-serialize}, command injection) & No egress to the Internet, read-only filesystem, no ServiceAccount token to call the API \\
+SSRF \texttt{GET /api/vulnerable/fetch} & Default-deny egress: only postgres and DNS are reachable \\
+Lateral movement from the front end to the database & client $\rightarrow$ postgres is denied \\
+Root or privileged container, host mounts & Rejected by Pod Security \texttt{restricted} \\
+Resource exhaustion (DoS) & Per-container limits and namespace quota \\
+Secrets in YAML & Secrets created with \texttt{kubectl create secret}, never committed; base64 is not encryption \\
+\bottomrule
+\end{tabularx}
+\end{table}
+These controls do not fix the vulnerable code. They limit what an attacker can do after exploiting it.
+
+\subsection{Issues found while writing the manifests}
+\begin{itemize}
+  \item The hardened client image ran nginx as root on port 80, so Pod Security would reject it. It now uses \texttt{nginxinc/nginx-unprivileged:1.25-alpine} (UID 101, port 8080); \texttt{docker-compose.prod.yml} maps \texttt{80:8080}.
+  \item In \texttt{postgres:16-alpine} the postgres user is UID 70, not 999. The manifest uses \texttt{postgres:16.6-bookworm}.
+  \item The hardened server image has no Prisma CLI, so migrations cannot run from it. The schema is loaded once by the postgres entrypoint from a ConfigMap built from \texttt{migration.sql}.
+  \item NetworkPolicies are additive: a ``deny'' policy cannot cancel an ``allow''. Quarantine works because every allow rule excludes \texttt{quarantine=true} pods.
+  \item CI also pushes \texttt{:latest}. The manifests use local images (\texttt{kind load}) or a commit SHA tag, never \texttt{:latest}.
+\end{itemize}
+
+\subsection{Verification status}
+\begin{table}[H]
+\centering
+\caption{What has been verified, and how.}
+\label{tab:k8stests}
+\begin{tabularx}{\textwidth}{@{}l Y l@{}}
+\toprule
+\rowcolor{headrow}\thc{Check} & \thc{Method} & \thc{Status} \\
+\midrule
+YAML style & \texttt{yamllint} with \texttt{.yamllint.yaml} & Pass \\
+API schemas & \texttt{kubeconform -strict}, Kubernetes 1.32.2 & Pass (27 resources) \\
+Restricted profile & Offline check of every Deployment & Pass (3/3) \\
+NetworkPolicy logic & Offline simulation of 21 flows; mutation test without the quarantine exclusions & Pass (21/21); mutant caught \\
+Shell scripts & \texttt{shellcheck}, \texttt{bash -n} & Pass \\
+Live cluster & \texttt{scripts/k8s-tests.sh} on kind & \textbf{\color{amb}Not run yet} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{tcolorbox}[colback=notebg,colframe=amb,leftrule=3pt,boxrule=0.3pt,arc=2pt,left=8pt,right=8pt]
+\textbf{\color{amb}Limit.} The offline checks validate the manifests against the Kubernetes API model, not Calico's behaviour.
+Until \texttt{scripts/k8s-tests.sh} runs on a kind cluster (positive tests through the Ingress, client $\rightarrow$ postgres denied, server egress denied, quarantine, root pod and pod without limits rejected), the enforcement is not proven.
+\end{tcolorbox}
+
+\subsection{Remaining work}
+\begin{itemize}
+  \item \texttt{k8s/README.md}: full deployment order, Secrets, test commands, known limits.
+  \item Wazuh: single-node manager outside the cluster, agent DaemonSet in \texttt{security-monitoring}, custom rules (SQL injection, XSS, brute force, \texttt{/api/debug}, \texttt{/api/config}, \texttt{/api/backup/users}) mapped to MITRE ATT\&CK.
+  \item Incident runbook: detect, contain (\texttt{kubectl label pod <name> quarantine=true}), eradicate, recover, lessons learned.
+\end{itemize}
+
 \section{Recommendations}
 \label{sec:rec}
 \begin{enumerate}
@@ -422,6 +507,8 @@ On the run Summary, also download artifacts \texttt{security-scan-results} and \
   \item Production: Trivy \texttt{exit-code: 1}, Jenkins \texttt{FAIL\_ON\_CRITICAL=true}.
   \item Put \texttt{JWT\_SECRET}, \texttt{DATABASE\_URL}, \texttt{POSTGRES\_PASSWORD} in GitHub Environments; require reviewers on production.
   \item Run Scheduled Security Scans once for \texttt{zap-report.html}.
+  \item Run \texttt{scripts/k8s-tests.sh} on kind and add its output to Table~\ref{tab:k8stests}.
+  \item Narrow the Wazuh agent egress \texttt{ipBlock} to the manager address (\texttt{/32}).
   \item Do not present a green honeypot pipeline as ``the application is secure''.
 \end{enumerate}
 
