@@ -57,7 +57,7 @@
   <!-- XSS: reflected in the query string, or stored through task title/description -->
   <rule id="100120" level="8">
     <if_sid>100100</if_sid>
-    <field name="query" type="pcre2">(?i)(&lt;\s*/?\s*script|javascript\s*:|\bon(error|load|mouseover|focus|click)\s*=|&lt;\s*(iframe|svg|img|object|embed)\b|document\.cookie|%3Cscript)</field>
+    <field name="query" type="pcre2">(?i)(\x3c\s*/?\s*script|javascript\s*:|\bon(error|load|mouseover|focus|click)\s*=|\x3c\s*(iframe|svg|img|object|embed)\b|document\.cookie|%3Cscript)</field>
     <description>TaskFlow: XSS payload in query string ($(path))</description>
     <mitre>
       <id>T1189</id>
@@ -68,7 +68,7 @@
 
   <rule id="100121" level="10">
     <if_sid>100100</if_sid>
-    <field name="body" type="pcre2">(?i)(&lt;\s*/?\s*script|javascript\s*:|\bon(error|load|mouseover|focus|click)\s*=|&lt;\s*(iframe|svg|img|object|embed)\b|document\.cookie)</field>
+    <field name="body" type="pcre2">(?i)(\x3c\s*/?\s*script|javascript\s*:|\bon(error|load|mouseover|focus|click)\s*=|\x3c\s*(iframe|svg|img|object|embed)\b|document\.cookie)</field>
     <description>TaskFlow: stored XSS payload in request body ($(method) $(path))</description>
     <mitre>
       <id>T1189</id>

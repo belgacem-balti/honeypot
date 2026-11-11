@@ -4,16 +4,17 @@
   The agent reads container logs from /var/log/pods/, where the container
   runtime prefixes every line (CRI format):
     2026-11-11T10:00:00.123456789Z stdout F {"app":"taskflow-server",...}
-  taskflow-cri strips that prefix, then the JSON decoder extracts the fields
+  Wazuh's pre-decoder takes the ISO 8601 timestamp and the stream ("stdout",
+  read as a syslog hostname) off the line, so the decoders see "F {...}"
+  (checked with wazuh-logtest 4.14.10). Both are still accepted in case
+  they are not stripped.
+  The prematch skips that prefix, then the JSON decoder extracts the fields
   documented in wazuh/README.md. A raw JSON line without the prefix (for
   example in wazuh-logtest) is handled by Wazuh's built-in "json" decoder; the
   rules match on the "app" field, so both paths reach the same rules.
 -->
-<decoder name="taskflow-cri">
-  <prematch type="pcre2">^\S+ (?:stdout|stderr) [FP] (?=\{\s*"app"\s*:\s*"taskflow-server")</prematch>
-</decoder>
-
+<!-- The lookahead has zero width: "after_prematch" starts exactly at the "{". -->
 <decoder name="taskflow-server">
-  <parent>taskflow-cri</parent>
-  <plugin_decoder offset="after_parent">JSON_Decoder</plugin_decoder>
+  <prematch type="pcre2">^(?:\S+\s)?(?:(?:stdout|stderr)\s)?[FP]\s(?=\{\s*"app"\s*:\s*"taskflow-server")</prematch>
+  <plugin_decoder offset="after_prematch">JSON_Decoder</plugin_decoder>
 </decoder>
