@@ -1,0 +1,16 @@
+# Named "server" so the proxy target http://server:5000 resolves in-namespace.
+apiVersion: v1
+kind: Service
+metadata:
+  name: server
+  labels:
+    app.kubernetes.io/name: server
+    app.kubernetes.io/part-of: honeypotx
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: server
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http

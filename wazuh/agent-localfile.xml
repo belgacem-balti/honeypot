@@ -1,0 +1,6 @@
+<!-- Add inside <ossec_config> in /var/ossec/etc/ossec.conf on the HONEYPOT VM -->
+<localfile>
+  <log_format>json</log_format>
+  <location>/var/log/honeypot/taskflow-events.json</location>
+  <label key="honeypot.sensor">taskflow-minikube</label>
+</localfile>

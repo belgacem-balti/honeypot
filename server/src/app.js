@@ -8,8 +8,17 @@ const adminRoutes = require('./routes/adminRoutes');
 const securityRoutes = require('./routes/securityRoutes');
 const { errorHandler } = require('./middleware/errorMiddleware');
 const prisma = require('./config/database');
+const { telemetry } = require('./middleware/telemetry');
 
 const app = express();
+
+// Trust exactly one proxy hop (the client nginx) so req.ip is the attacker
+// address nginx saw, not a spoofable left-most X-Forwarded-For entry.
+app.set('trust proxy', 1);
+
+// Honeypot telemetry: mounted first so malformed bodies are logged too;
+// req.body is read on 'finish', after express.json has populated it.
+app.use(telemetry);
 
 // VULNERABILITY: Overly permissive JSON body size limit
 app.use(express.json({ limit: '50mb' }));

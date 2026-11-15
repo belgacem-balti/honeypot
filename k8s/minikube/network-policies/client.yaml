@@ -1,0 +1,22 @@
+# client: accepts HTTP on 8080 (the decoy's public face), may only talk to the API.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: client
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: client
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: server
+      ports:
+        - protocol: TCP
+          port: 5000

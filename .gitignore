@@ -26,7 +26,11 @@ Thumbs.db
 npm-debug.log*
 
 # Prisma
-server/prisma/migrations/
+# migrations/ is versioned: Kubernetes applies it with `prisma migrate deploy`
+
+# Kubernetes: never commit filled-in secret files
+k8s/**/*.secret.env
+k8s/**/*.secret.yaml
 
 # Coverage
 coverage/
