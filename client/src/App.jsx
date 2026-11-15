@@ -10,6 +10,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
 import Profile from './pages/Profile';
+import Security from './pages/Security';
 import Calendar from './pages/Calendar';
 import Activity from './pages/Activity';
 import Team from './pages/Team';
@@ -71,6 +72,7 @@ export default function App() {
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/tasks" element={<Tasks />} />
+              <Route path="/security" element={<Security />} />
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/activity" element={<Activity />} />
               <Route path="/team" element={<Team />} />

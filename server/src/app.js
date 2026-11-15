@@ -5,6 +5,7 @@ const authRoutes = require('./routes/authRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const securityRoutes = require('./routes/securityRoutes');
 const { errorHandler } = require('./middleware/errorMiddleware');
 const prisma = require('./config/database');
 
@@ -124,6 +125,7 @@ app.get('/api/search', async (req, res) => {
 });
 
 // Routes
+app.use('/api/security', securityRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/users', userRoutes);

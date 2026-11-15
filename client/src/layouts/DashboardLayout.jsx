@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, User, LogOut, Menu, X, Search, Bell, Calendar, Activity, Users } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, User, LogOut, Menu, X, Search, Bell, Calendar, Activity, Users, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
+  { to: '/security', icon: ShieldAlert, label: 'AI Threat SOC' },
   { to: '/calendar', icon: Calendar, label: 'Calendar' },
   { to: '/activity', icon: Activity, label: 'Activity' },
   { to: '/team', icon: Users, label: 'Team' },

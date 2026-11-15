@@ -48,3 +48,9 @@ export const users = {
   updateProfile: (data) => api.put('/users/profile', data),
   updatePassword: (data) => api.put('/users/password', data),
 };
+
+export const security = {
+  analyze: (data) => api.post('/security/analyze', data),
+  alerts: (params) => api.get('/security/alerts', { params }),
+  stats: () => api.get('/security/stats'),
+};
