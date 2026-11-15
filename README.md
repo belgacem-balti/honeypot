@@ -18,7 +18,7 @@
 2. [Tech Stack](#tech-stack)
 3. [Architecture](#architecture)
 4. [Setup & Installation](#setup--installation)
-   - [Gestion des secrets](#gestion-des-secrets)
+   - [Secrets management](#secrets-management)
 5. [Vulnerability Catalog](#-vulnerability-catalog)
    - [V-01: Stored XSS](#v-01-stored-cross-site-scripting-xss)
    - [V-02: SQL Injection (Search)](#v-02-sql-injection--search-endpoint)
@@ -122,85 +122,102 @@ Access points:
    cd .. && npm run dev
    ```
 
-### Gestion des secrets
+### Secrets management
 
-> ⚠️ **Les anciennes valeurs sont compromises : rotation obligatoire.** `k8s/postgres-secret.yaml`,
-> `k8s/server-secret.yaml` et `k8s/security-secret.yaml` ont été versionnés avec des valeurs faibles
-> (mot de passe Postgres `password`, `JWT_SECRET` en dur). Ils ne sont plus suivis par Git, mais ces
-> valeurs restent lisibles dans l'historique. Tout environnement qui les utilise encore doit recevoir
-> de nouvelles valeurs (voir plus bas), puis redémarrer ses pods.
+> ⚠️ **The old values are compromised: rotation is mandatory.** `k8s/postgres-secret.yaml`,
+> `k8s/server-secret.yaml` and `k8s/security-secret.yaml` were committed with weak values
+> (Postgres password `password`, hard-coded `JWT_SECRET`). They are no longer tracked by Git, but
+> those values are still readable in the history. Any environment that still uses them must get
+> new values (see below) and then restart its pods.
 
-**Pourquoi les secrets ne sont plus dans le dépôt**
+> **Scope: upstream stack (`k8s/`) only.** Everything below applies to `k8s/kustomization.yaml`
+> (namespace `honeypot`). The hardened Minikube stack in `k8s/minikube/` (namespace
+> `honeypot-decoy`) keeps **its own secrets procedure**: a single Secret `decoy-secrets` with
+> different key names, generated directly with `openssl rand` and never stored in a file. See
+> [`k8s/minikube/README.md`](k8s/minikube/README.md) and `k8s/minikube/secrets.example.env`.
+> `scripts/create-k8s-secrets.sh` does **not** create that Secret and refuses the
+> `honeypot-decoy` namespace.
 
-- **Le dépôt est public** : tout ce qui est commité est lisible par n'importe qui, et indexé par des
-  bots qui scannent GitHub à la recherche de clés en quelques minutes.
-- **L'historique Git est permanent** : supprimer un fichier ou le retirer avec `git rm --cached` ne
-  l'efface pas des commits précédents, ni des clones et forks existants. Un secret commité une fois
-  doit être considéré comme public.
-- **base64 ≠ chiffrement** : un Secret Kubernetes est seulement encodé en base64 (`stringData` est
-  même en clair). `base64 -d` suffit à le lire. Par défaut, les Secrets ne sont pas non plus chiffrés
-  dans etcd.
-- **Un `JWT_SECRET` connu rend les JWT forgeables** : avec ce secret, n'importe qui peut signer un
-  token valide pour n'importe quel utilisateur, administrateurs compris, sans connaître de mot de passe.
+**Why secrets are no longer in the repository**
 
-Seuls des modèles sont versionnés : `.env.example` et `k8s/*-secret.example.yaml` (valeurs vides ou
-`CHANGE_ME`). `.env` et `k8s/**/*-secret.yaml` sont dans `.gitignore`.
+- **The repository is public:** anything committed can be read by anyone, and bots scanning GitHub
+  for keys pick it up within minutes.
+- **Git history is permanent:** deleting a file or removing it with `git rm --cached` does not erase
+  it from earlier commits, nor from existing clones and forks. A secret committed once must be
+  treated as public.
+- **base64 ≠ encryption:** a Kubernetes Secret is only base64-encoded (`stringData` is even plain
+  text). `base64 -d` is enough to read it. By default, Secrets are not encrypted in etcd either.
+- **A known `JWT_SECRET` makes JWTs forgeable:** with that secret, anyone can sign a valid token for
+  any user, administrators included, without knowing any password.
 
-**1. Créer son `.env`**
+Only templates are versioned: `.env.example` and `k8s/*-secret.example.yaml` (empty or `CHANGE_ME`
+values). `.env` and `k8s/**/*-secret.yaml` are in `.gitignore`.
+
+**1. Create your `.env`**
 
 ```bash
 cp .env.example .env
 chmod 600 .env
 ```
 
-Génère des valeurs fortes et colle-les dans `.env` à la main (elles ne doivent jamais apparaître dans
-un fichier suivi par Git) :
+Generate strong values and paste them into `.env` by hand (they must never appear in a file tracked
+by Git):
 
 ```bash
 openssl rand -base64 32   # → POSTGRES_PASSWORD
 openssl rand -base64 32   # → JWT_SECRET
 ```
 
-Les clés `GROQ_API_KEY`, `ABUSEIPDB_API_KEY` et `OTX_API_KEY` sont facultatives. Utilise des clés
-dédiées à ce projet et révocables : l'application est volontairement vulnérable, il faut donc
-considérer que tout ce qui est présent dans le pod serveur peut fuiter.
+`GROQ_API_KEY`, `ABUSEIPDB_API_KEY` and `OTX_API_KEY` are optional. Use keys dedicated to this
+project that you can revoke: the application is intentionally vulnerable, so assume that anything
+present in the server pod can leak.
 
-Pour docker compose, `DATABASE_URL` doit contenir le même mot de passe, **encodé pour une URL** (la
-sortie base64 contient `+`, `/` et `=`) :
+For docker compose, `DATABASE_URL` must contain the same password, **URL-encoded** (base64 output
+contains `+`, `/` and `=`):
 
 ```bash
 python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1],safe=""))' "<POSTGRES_PASSWORD>"
 ```
 
-**2. Créer les Secrets Kubernetes**
+**2. Create the Kubernetes Secrets**
 
 ```bash
-scripts/create-k8s-secrets.sh          # lit ./.env (ou: scripts/create-k8s-secrets.sh chemin/.env)
+scripts/create-k8s-secrets.sh --dry-run   # preview: Secret names and key names only, no kubectl call
+scripts/create-k8s-secrets.sh             # reads ./.env (or: scripts/create-k8s-secrets.sh path/.env)
 minikube kubectl -- apply -k k8s/
 ```
 
-Le script lit `.env` sans l'exécuter, détecte le namespace (`honeypot`) dans `k8s/kustomization.yaml`
-et crée `postgres-secret`, `server-secret` et `security-secret` via
-`kubectl create secret generic … --dry-run=client -o yaml | kubectl apply -f -`. Il construit lui-même
-les `DATABASE_URL*` (mot de passe encodé) et n'affiche jamais les valeurs, seulement les noms des
-clés. Il refuse les valeurs vides, `CHANGE_ME` ou trop courtes. Variables utiles : `KUBECTL`,
-`NAMESPACE`, `PG_HOST`, `PG_SHARD1_HOST`.
+The script reads `.env` without executing it, detects the namespace (`honeypot`) from
+`k8s/kustomization.yaml` and creates `postgres-secret`, `server-secret` and `security-secret` via
+`kubectl create secret generic … --dry-run=client -o yaml | kubectl apply -f -`. It builds the
+`DATABASE_URL*` values itself (with the password encoded) and never prints values, only key names.
+It rejects empty, `CHANGE_ME` or too-short values.
 
-Les Secrets ne font plus partie de `k8s/kustomization.yaml` : `apply -k k8s/` ne peut donc plus
-écraser les vraies valeurs avec celles du dépôt.
+Options:
+
+- `--namespace <ns>`: target another namespace (default: the one in `k8s/kustomization.yaml`). That
+  namespace must already exist; only the default one is created from `k8s/namespace.yaml`.
+- `--dry-run`: print only the Secret names and key names, then check `.env` if it exists. Never
+  prints values and never contacts the cluster.
+
+Useful environment variables: `KUBECTL`, `NAMESPACE` (overridden by `--namespace`), `PG_HOST`,
+`PG_SHARD1_HOST`, `PG_PORT`.
+
+The Secrets are no longer part of `k8s/kustomization.yaml`, so `apply -k k8s/` can no longer
+overwrite the real values with the ones from the repository.
 
 **3. Rotation**
 
-Relance le script avec les nouvelles valeurs, puis redémarre les pods concernés :
+Run the script again with the new values, then restart the affected pods:
 
 ```bash
 minikube kubectl -- -n honeypot rollout restart deploy/server deploy/worker
 ```
 
-Attention pour Postgres : `POSTGRES_PASSWORD` n'est lu qu'à l'initialisation d'un volume vide. Sur
-une base existante, change aussi le mot de passe dans Postgres
-(`ALTER USER postgres WITH PASSWORD '…';` via `psql`), sinon le serveur ne pourra plus se connecter.
-Changer `JWT_SECRET` invalide toutes les sessions en cours, ce qui est le but.
+Careful with Postgres: `POSTGRES_PASSWORD` is only read when an empty volume is initialised. On an
+existing database, also change the password inside Postgres
+(`ALTER USER postgres WITH PASSWORD '…';` via `psql`), otherwise the server can no longer connect.
+Changing `JWT_SECRET` invalidates all current sessions, which is the point.
 
 ---
 
