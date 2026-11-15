@@ -1,0 +1,9 @@
+# Deny all ingress and egress for every pod in the namespace; the other
+# policies in this directory re-open only the flows the decoy needs.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]

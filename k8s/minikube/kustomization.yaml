@@ -1,0 +1,22 @@
+# Apply with:  minikube kubectl -- apply -k k8s/minikube/
+# The "decoy-secrets" Secret is NOT managed here; create it first (see README).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: honeypot-decoy
+resources:
+  - base/namespace.yaml
+  - base/limits.yaml
+  - network-policies/default-deny.yaml
+  - network-policies/allow-dns.yaml
+  - network-policies/client.yaml
+  - network-policies/server.yaml
+  - network-policies/postgres.yaml
+  - postgres/init-configmap.yaml
+  - postgres/service.yaml
+  - postgres/statefulset.yaml
+  - server/configmap.yaml
+  - server/service.yaml
+  - server/deployment.yaml
+  - client/nginx-configmap.yaml
+  - client/service.yaml
+  - client/deployment.yaml

@@ -1,0 +1,103 @@
+<!--
+  HoneypotX / TaskFlow rules. Install on the WAZUH SERVER as
+  /var/ossec/etc/rules/honeypot_rules.xml (owner wazuh:wazuh, mode 660)
+  and restart wazuh-manager. Events come from the agent's built-in JSON decoder.
+  Any traffic to a decoy is suspicious by definition, so even "none" logs at level 3.
+-->
+<group name="honeypot,taskflow,web,">
+
+  <rule id="100100" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="honeypot">^taskflow$</field>
+    <description>Honeypot TaskFlow: $(method) $(path) from $(srcip)</description>
+  </rule>
+
+  <rule id="100101" level="5">
+    <if_sid>100100</if_sid>
+    <field name="attack">^probe$</field>
+    <description>Honeypot: probe for non-existent path $(path) from $(srcip)</description>
+    <mitre><id>T1595.003</id></mitre>
+  </rule>
+
+  <rule id="100102" level="7">
+    <if_sid>100100</if_sid>
+    <field name="attack">^recon$|^user_enumeration$</field>
+    <description>Honeypot: reconnaissance ($(attack)) on $(path) from $(srcip)</description>
+    <mitre><id>T1595</id></mitre>
+    <group>recon,</group>
+  </rule>
+
+  <rule id="100103" level="7">
+    <if_sid>100100</if_sid>
+    <field name="attack">^scanner$</field>
+    <description>Honeypot: automated scanner "$(user_agent)" from $(srcip)</description>
+    <mitre><id>T1595.002</id></mitre>
+    <group>recon,</group>
+  </rule>
+
+  <rule id="100104" level="5">
+    <if_sid>100100</if_sid>
+    <field name="attack">^auth_failure$</field>
+    <description>Honeypot: failed login for $(username) from $(srcip)</description>
+    <group>authentication_failed,</group>
+  </rule>
+
+  <rule id="100105" level="12">
+    <if_sid>100100</if_sid>
+    <field name="attack">^sqli$</field>
+    <description>Honeypot: SQL injection attempt on $(path) from $(srcip)</description>
+    <mitre><id>T1190</id></mitre>
+    <group>attack,sql_injection,</group>
+  </rule>
+
+  <rule id="100106" level="10">
+    <if_sid>100100</if_sid>
+    <field name="attack">^xss$|^path_traversal$|^cmd_injection$</field>
+    <description>Honeypot: $(attack) attempt on $(path) from $(srcip)</description>
+    <mitre><id>T1190</id></mitre>
+    <group>attack,web_attack,</group>
+  </rule>
+
+  <rule id="100107" level="10">
+    <if_sid>100100</if_sid>
+    <field name="attack">^admin_access$|^account_takeover$</field>
+    <description>Honeypot: $(attack) via unauthenticated $(path) from $(srcip)</description>
+    <mitre><id>T1078</id></mitre>
+    <group>attack,</group>
+  </rule>
+
+  <rule id="100108" level="12">
+    <if_sid>100100</if_sid>
+    <field name="attack">^data_exfiltration$</field>
+    <field name="http_status">^200$</field>
+    <description>Honeypot: user database dumped via $(path) by $(srcip)</description>
+    <mitre><id>T1530</id></mitre>
+    <group>attack,exfiltration,</group>
+  </rule>
+
+  <!-- Correlation: same attacker, many events -->
+  <rule id="100110" level="10" frequency="6" timeframe="120">
+    <if_matched_sid>100104</if_matched_sid>
+    <same_srcip />
+    <description>Honeypot: brute force, 6+ failed logins from $(srcip) in 2 min</description>
+    <mitre><id>T1110</id></mitre>
+    <group>authentication_failures,</group>
+  </rule>
+
+  <rule id="100111" level="10" frequency="20" timeframe="60">
+    <if_matched_sid>100101</if_matched_sid>
+    <same_srcip />
+    <description>Honeypot: directory brute-forcing, 20+ 404s from $(srcip) in 1 min</description>
+    <mitre><id>T1595.003</id></mitre>
+    <group>recon,</group>
+  </rule>
+
+  <rule id="100112" level="13" frequency="3" timeframe="300">
+    <if_matched_sid>100105</if_matched_sid>
+    <same_srcip />
+    <description>Honeypot: sustained SQL injection campaign from $(srcip)</description>
+    <mitre><id>T1190</id></mitre>
+    <group>attack,sql_injection,</group>
+  </rule>
+
+</group>

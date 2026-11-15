@@ -1,0 +1,21 @@
+# Runs once, on first initialisation of an empty data directory.
+# The application role is deliberately NOT a superuser: the decoy contains SQL
+# injection, and a superuser could escalate to OS commands (COPY ... TO PROGRAM).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: honeypotx
+data:
+  01-create-app-role.sh: |
+    #!/bin/sh
+    set -eu
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres <<'EOSQL'
+    \getenv app_pw TASKFLOW_APP_PASSWORD
+    CREATE ROLE taskflow_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD :'app_pw';
+    CREATE DATABASE taskflow OWNER taskflow_app;
+    REVOKE ALL ON DATABASE taskflow FROM PUBLIC;
+    GRANT CONNECT ON DATABASE taskflow TO taskflow_app;
+    EOSQL

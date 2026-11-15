@@ -1,0 +1,35 @@
+# Kubernetes-specific nginx config (client/nginx.conf stays as-is for compose):
+# unprivileged port 8080, capped request body, no nginx version disclosure.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: client-nginx
+  labels:
+    app.kubernetes.io/name: client
+    app.kubernetes.io/part-of: honeypotx
+data:
+  default.conf: |
+    server {
+        listen 8080;
+        server_name _;
+        server_tokens off;
+
+        # Resource-exhaustion guard in front of the app's 50mb JSON limit
+        client_max_body_size 2m;
+
+        location / {
+            root /usr/share/nginx/html;
+            index index.html index.htm;
+            try_files $uri $uri/ /index.html;
+        }
+
+        location /api/ {
+            proxy_pass http://server:5000/api/;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 30s;
+        }
+    }

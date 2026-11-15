@@ -1,0 +1,12 @@
+# Dedicated namespace for the deliberately vulnerable TaskFlow decoy.
+# Pod Security Admission "restricted" rejects privileged / root / hostPath pods.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: honeypot-decoy
+  labels:
+    app.kubernetes.io/part-of: honeypotx
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
