@@ -1,5 +1,17 @@
-const { redis } = require('../config/redis');
-const { publish } = require('../config/queue');
+let redisClient = null;
+let publishEvent = null;
+try {
+  const redisConfig = require('../config/redis');
+  redisClient = redisConfig.getClient ? redisConfig.getClient() : null;
+} catch (_e) {
+  // Standalone mode without redis
+}
+try {
+  const queueConfig = require('../config/queue');
+  publishEvent = queueConfig.publish;
+} catch (_e) {
+  // Standalone mode without queue
+}
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const ABUSEIPDB_KEY = process.env.ABUSEIPDB_API_KEY;
@@ -194,19 +206,21 @@ async function processSecurityEvent({ ip, log, source, ruleId, level }) {
   await saveIncident(incident);
 
   // 4. Optionally publish to RabbitMQ queue for worker / notification processing
-  try {
-    await publish('security.incident', {
-      type: 'security.incident',
-      payload: {
-        incidentId: incident.id,
-        ip: incident.ip,
-        threatLevel: aiAnalysis.threat_level,
-        attackType: aiAnalysis.attack_type,
-        summary: aiAnalysis.summary
-      }
-    });
-  } catch (_e) {
-    // Non-blocking queue publish
+  if (publishEvent) {
+    try {
+      await publishEvent('security.incident', {
+        type: 'security.incident',
+        payload: {
+          incidentId: incident.id,
+          ip: incident.ip,
+          threatLevel: aiAnalysis.threat_level,
+          attackType: aiAnalysis.attack_type,
+          summary: aiAnalysis.summary
+        }
+      });
+    } catch (_e) {
+      // Non-blocking queue publish
+    }
   }
 
   return incident;
@@ -218,11 +232,11 @@ async function saveIncident(incident) {
     inMemoryIncidents.pop();
   }
 
-  if (redis) {
+  if (redisClient) {
     try {
       const key = 'security:incidents';
-      await redis.lpush(key, JSON.stringify(incident));
-      await redis.ltrim(key, 0, MAX_STORED_INCIDENTS - 1);
+      await redisClient.lpush(key, JSON.stringify(incident));
+      await redisClient.ltrim(key, 0, MAX_STORED_INCIDENTS - 1);
     } catch (_e) {
       // In-memory fallback is already populated
     }
@@ -230,9 +244,9 @@ async function saveIncident(incident) {
 }
 
 async function getRecentIncidents(limit = 20) {
-  if (redis) {
+  if (redisClient) {
     try {
-      const items = await redis.lrange('security:incidents', 0, limit - 1);
+      const items = await redisClient.lrange('security:incidents', 0, limit - 1);
       if (items && items.length > 0) {
         return items.map((item) => JSON.parse(item));
       }
