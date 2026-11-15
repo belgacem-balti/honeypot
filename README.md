@@ -18,6 +18,7 @@
 2. [Tech Stack](#tech-stack)
 3. [Architecture](#architecture)
 4. [Setup & Installation](#setup--installation)
+   - [Gestion des secrets](#gestion-des-secrets)
 5. [Vulnerability Catalog](#-vulnerability-catalog)
    - [V-01: Stored XSS](#v-01-stored-cross-site-scripting-xss)
    - [V-02: SQL Injection (Search)](#v-02-sql-injection--search-endpoint)
@@ -120,6 +121,86 @@ Access points:
    cd ../client && npm install
    cd .. && npm run dev
    ```
+
+### Gestion des secrets
+
+> ⚠️ **Les anciennes valeurs sont compromises : rotation obligatoire.** `k8s/postgres-secret.yaml`,
+> `k8s/server-secret.yaml` et `k8s/security-secret.yaml` ont été versionnés avec des valeurs faibles
+> (mot de passe Postgres `password`, `JWT_SECRET` en dur). Ils ne sont plus suivis par Git, mais ces
+> valeurs restent lisibles dans l'historique. Tout environnement qui les utilise encore doit recevoir
+> de nouvelles valeurs (voir plus bas), puis redémarrer ses pods.
+
+**Pourquoi les secrets ne sont plus dans le dépôt**
+
+- **Le dépôt est public** : tout ce qui est commité est lisible par n'importe qui, et indexé par des
+  bots qui scannent GitHub à la recherche de clés en quelques minutes.
+- **L'historique Git est permanent** : supprimer un fichier ou le retirer avec `git rm --cached` ne
+  l'efface pas des commits précédents, ni des clones et forks existants. Un secret commité une fois
+  doit être considéré comme public.
+- **base64 ≠ chiffrement** : un Secret Kubernetes est seulement encodé en base64 (`stringData` est
+  même en clair). `base64 -d` suffit à le lire. Par défaut, les Secrets ne sont pas non plus chiffrés
+  dans etcd.
+- **Un `JWT_SECRET` connu rend les JWT forgeables** : avec ce secret, n'importe qui peut signer un
+  token valide pour n'importe quel utilisateur, administrateurs compris, sans connaître de mot de passe.
+
+Seuls des modèles sont versionnés : `.env.example` et `k8s/*-secret.example.yaml` (valeurs vides ou
+`CHANGE_ME`). `.env` et `k8s/**/*-secret.yaml` sont dans `.gitignore`.
+
+**1. Créer son `.env`**
+
+```bash
+cp .env.example .env
+chmod 600 .env
+```
+
+Génère des valeurs fortes et colle-les dans `.env` à la main (elles ne doivent jamais apparaître dans
+un fichier suivi par Git) :
+
+```bash
+openssl rand -base64 32   # → POSTGRES_PASSWORD
+openssl rand -base64 32   # → JWT_SECRET
+```
+
+Les clés `GROQ_API_KEY`, `ABUSEIPDB_API_KEY` et `OTX_API_KEY` sont facultatives. Utilise des clés
+dédiées à ce projet et révocables : l'application est volontairement vulnérable, il faut donc
+considérer que tout ce qui est présent dans le pod serveur peut fuiter.
+
+Pour docker compose, `DATABASE_URL` doit contenir le même mot de passe, **encodé pour une URL** (la
+sortie base64 contient `+`, `/` et `=`) :
+
+```bash
+python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1],safe=""))' "<POSTGRES_PASSWORD>"
+```
+
+**2. Créer les Secrets Kubernetes**
+
+```bash
+scripts/create-k8s-secrets.sh          # lit ./.env (ou: scripts/create-k8s-secrets.sh chemin/.env)
+minikube kubectl -- apply -k k8s/
+```
+
+Le script lit `.env` sans l'exécuter, détecte le namespace (`honeypot`) dans `k8s/kustomization.yaml`
+et crée `postgres-secret`, `server-secret` et `security-secret` via
+`kubectl create secret generic … --dry-run=client -o yaml | kubectl apply -f -`. Il construit lui-même
+les `DATABASE_URL*` (mot de passe encodé) et n'affiche jamais les valeurs, seulement les noms des
+clés. Il refuse les valeurs vides, `CHANGE_ME` ou trop courtes. Variables utiles : `KUBECTL`,
+`NAMESPACE`, `PG_HOST`, `PG_SHARD1_HOST`.
+
+Les Secrets ne font plus partie de `k8s/kustomization.yaml` : `apply -k k8s/` ne peut donc plus
+écraser les vraies valeurs avec celles du dépôt.
+
+**3. Rotation**
+
+Relance le script avec les nouvelles valeurs, puis redémarre les pods concernés :
+
+```bash
+minikube kubectl -- -n honeypot rollout restart deploy/server deploy/worker
+```
+
+Attention pour Postgres : `POSTGRES_PASSWORD` n'est lu qu'à l'initialisation d'un volume vide. Sur
+une base existante, change aussi le mot de passe dans Postgres
+(`ALTER USER postgres WITH PASSWORD '…';` via `psql`), sinon le serveur ne pourra plus se connecter.
+Changer `JWT_SECRET` invalide toutes les sessions en cours, ce qui est le but.
 
 ---
 

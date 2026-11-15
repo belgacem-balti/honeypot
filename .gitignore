@@ -35,3 +35,9 @@ coverage/
 .pgdata/
 
 keyhoney.txt
+
+# Kubernetes Secret manifests with real values: create them from .env with
+# scripts/create-k8s-secrets.sh. Only the *.example.yaml templates are versioned.
+k8s/*-secret.yaml
+k8s/**/*-secret.yaml
+!k8s/**/*.example.yaml
