@@ -1,0 +1,10 @@
+<!--
+  Add this block inside the <ossec_config> section of /var/ossec/etc/ossec.conf
+  on your Wazuh Manager machine.
+-->
+<integration>
+  <name>custom-threat-analyzer</name>
+  <hook_url>http://127.0.0.1:8080/api/wazuh</hook_url>
+  <level>5</level>
+  <alert_format>json</alert_format>
+</integration>

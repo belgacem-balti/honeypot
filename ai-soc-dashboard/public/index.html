@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autonomous AI SOC Dashboard | Live Wazuh SIEM Stream</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #070a12;
+      color: #f1f5f9;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .glow-red {
+      box-shadow: 0 0 25px -5px rgba(239, 68, 68, 0.4);
+    }
+    .glow-blue {
+      box-shadow: 0 0 25px -5px rgba(59, 130, 246, 0.3);
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.15); opacity: 0.3; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .pulse-indicator {
+      animation: pulse-ring 2s infinite ease-in-out;
+    }
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(-12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .alert-enter {
+      animation: slide-in 0.4s ease-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- TOP NAVIGATION HEADER -->
+  <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
+        <i data-lucide="shield-alert" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-bold text-lg text-white tracking-tight">AUTONOMOUS AI SOC MONITOR</h1>
+          <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Standalone v1.0</span>
+        </div>
+        <p class="text-xs text-slate-400">Live Dynamic Wazuh Ingestion • Groq Llama/GPT-OSS • AbuseIPDB • AlienVault OTX</p>
+      </div>
+    </div>
+
+    <!-- Live Stream Status & Actions -->
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-950/50 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 pulse-indicator"></span>
+        <span id="connection-status">STREAMING LIVE</span>
+      </div>
+
+      <button id="config-btn" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5">
+        <i data-lucide="settings" class="w-3.5 h-3.5"></i> Wazuh Hook Config
+      </button>
+
+      <button id="sound-btn" class="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200" title="Toggle Alert Beep">
+        <i data-lucide="volume-2" id="sound-icon" class="w-4 h-4 text-emerald-400"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
+
+    <!-- METRICS CARDS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between">
+        <div>
+          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider block">Wazuh Events Caught</span>
+          <span id="metric-total" class="text-3xl font-extrabold text-white mt-1 block">0</span>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
+          <i data-lucide="radio" class="w-6 h-6"></i>
+        </div>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between">
+        <div>
+          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider block">Critical Threats</span>
+          <span id="metric-critical" class="text-3xl font-extrabold text-rose-500 mt-1 block">0</span>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center border border-rose-500/20">
+          <i data-lucide="flame" class="w-6 h-6"></i>
+        </div>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between">
+        <div>
+          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider block">AI Inference Core</span>
+          <span class="text-sm font-bold text-white mt-1 block">Groq (GPT-OSS 20B)</span>
+          <span class="text-[11px] text-emerald-400 font-medium">Ultra-Fast Reasoning</span>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
+          <i data-lucide="brain-circuit" class="w-6 h-6"></i>
+        </div>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between">
+        <div>
+          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider block">Dual Threat Feeds</span>
+          <span class="text-sm font-bold text-white mt-1 block">AbuseIPDB & OTX</span>
+          <span class="text-[11px] text-cyan-400 font-medium">Reputation & IOC Pulses</span>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center border border-cyan-500/20">
+          <i data-lucide="globe-2" class="w-6 h-6"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIMULATION TOOLBAR & FILTER BAR -->
+    <div class="p-4 rounded-2xl bg-slate-900/40 border border-slate-800/80 flex flex-wrap items-center justify-between gap-4">
+      <!-- Quick Test Triggers -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-xs font-semibold text-slate-400 flex items-center gap-1.5 mr-1">
+          <i data-lucide="play" class="w-3.5 h-3.5 text-blue-400"></i> Simulator Triggers:
+        </span>
+        <button onclick="triggerSimulation('sql')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition border border-slate-700">
+          💥 SQL Injection
+        </button>
+        <button onclick="triggerSimulation('ssh')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition border border-slate-700">
+          🔐 SSH Brute-Force
+        </button>
+        <button onclick="triggerSimulation('scanner')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition border border-slate-700">
+          🔍 Honeypot Probe
+        </button>
+      </div>
+
+      <!-- Severity Filter Buttons -->
+      <div class="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+        <button class="filter-btn active px-3 py-1 text-xs rounded-lg font-medium text-white bg-blue-600" data-filter="ALL">ALL</button>
+        <button class="filter-btn px-3 py-1 text-xs rounded-lg font-medium text-slate-400 hover:text-white" data-filter="CRITICAL">CRITICAL</button>
+        <button class="filter-btn px-3 py-1 text-xs rounded-lg font-medium text-slate-400 hover:text-white" data-filter="HIGH">HIGH</button>
+        <button class="filter-btn px-3 py-1 text-xs rounded-lg font-medium text-slate-400 hover:text-white" data-filter="MEDIUM">MEDIUM</button>
+        <button class="filter-btn px-3 py-1 text-xs rounded-lg font-medium text-slate-400 hover:text-white" data-filter="LOW">LOW</button>
+      </div>
+    </div>
+
+    <!-- LIVE INCIDENTS STREAM TABLE -->
+    <div class="rounded-2xl bg-slate-900/60 border border-slate-800 overflow-hidden shadow-2xl">
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="terminal" class="w-4 h-4 text-emerald-400"></i>
+          <h2 class="font-bold text-sm tracking-wide text-white uppercase">Real-Time Ingested Alerts Feed</h2>
+        </div>
+        <span class="text-xs text-slate-400" id="feed-counter">Showing 0 alerts</span>
+      </div>
+
+      <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-950/70 text-slate-400 text-xs uppercase tracking-wider sticky top-0 z-10 border-b border-slate-800">
+            <tr>
+              <th class="py-3 px-5">Time</th>
+              <th class="py-3 px-5">Threat Level</th>
+              <th class="py-3 px-5">Source IP</th>
+              <th class="py-3 px-5">Attack Category</th>
+              <th class="py-3 px-5">AI Executive Summary</th>
+              <th class="py-3 px-5 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="alerts-tbody" class="divide-y divide-slate-800/60 font-medium">
+            <tr id="empty-row">
+              <td colspan="6" class="text-center py-16 text-slate-500 text-sm">
+                <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                Waiting for Wazuh alerts... Use the simulator buttons above or send alerts to <code class="bg-slate-800 px-2 py-0.5 rounded text-slate-300">/api/wazuh</code>.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- INCIDENT DETAIL MODAL -->
+  <div id="detail-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl">
+      <div class="flex items-start justify-between border-b border-slate-800 pb-4">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <span id="modal-threat-badge" class="px-2.5 py-0.5 text-xs font-bold rounded-full">CRITICAL</span>
+            <h3 id="modal-attack-type" class="text-lg font-bold text-white">SQL Injection Extraction</h3>
+          </div>
+          <p id="modal-timestamp" class="text-xs text-slate-400 mt-1 mono">Time: --</p>
+        </div>
+        <button onclick="closeModal()" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- IP & Threat Intelligence Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800">
+          <span class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold block">Attacker IP</span>
+          <span id="modal-ip" class="text-sm font-bold text-cyan-400 mono block mt-1">--</span>
+          <span id="modal-country" class="text-xs text-slate-400 block">Country: --</span>
+        </div>
+        <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800">
+          <span class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold block">AbuseIPDB Score</span>
+          <span id="modal-abuse-score" class="text-sm font-bold text-rose-400 block mt-1">0%</span>
+          <span id="modal-abuse-reports" class="text-xs text-slate-400 block">0 Reports</span>
+        </div>
+        <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800">
+          <span class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold block">AlienVault OTX</span>
+          <span id="modal-otx-pulses" class="text-sm font-bold text-purple-400 block mt-1">0 Pulses</span>
+          <div id="modal-otx-tags" class="flex flex-wrap gap-1 mt-1"></div>
+        </div>
+      </div>
+
+      <!-- Groq AI SOC Analysis Box -->
+      <div class="p-4 rounded-xl bg-gradient-to-br from-indigo-950/40 via-slate-950 to-slate-950 border border-indigo-500/30 space-y-3">
+        <div class="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider">
+          <i data-lucide="sparkles" class="w-4 h-4"></i> Groq AI SOC Verdict & Reasoning
+        </div>
+        <div>
+          <span class="text-xs text-slate-400 uppercase tracking-wider block">Executive Summary:</span>
+          <p id="modal-ai-summary" class="text-sm text-slate-200 mt-0.5 leading-relaxed">--</p>
+        </div>
+        <div>
+          <span class="text-xs text-slate-400 uppercase tracking-wider block">Technical Details & Evidence:</span>
+          <p id="modal-ai-details" class="text-xs text-slate-300 mono mt-0.5 leading-relaxed bg-black/40 p-2.5 rounded-lg border border-slate-800">--</p>
+        </div>
+        <div>
+          <span class="text-xs text-slate-400 uppercase tracking-wider block">Recommended Action:</span>
+          <div id="modal-ai-action" class="text-xs font-bold text-emerald-400 mono mt-0.5 bg-emerald-950/40 border border-emerald-500/30 p-2 rounded-lg">--</div>
+        </div>
+      </div>
+
+      <!-- Raw Log & Wazuh Rule -->
+      <div class="space-y-1.5">
+        <span class="text-xs text-slate-400 uppercase tracking-wider block">Raw Log / Event Payload:</span>
+        <pre id="modal-raw-log" class="text-xs text-slate-300 bg-slate-950 p-3 rounded-xl border border-slate-800 overflow-x-auto mono max-h-36">--</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIGURATION MODAL -->
+  <div id="config-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-white text-base flex items-center gap-2">
+          <i data-lucide="webhook" class="w-5 h-5 text-blue-400"></i> Wazuh Integration Setup
+        </h3>
+        <button onclick="closeConfigModal()" class="p-1 rounded-lg text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-300 leading-relaxed">
+        To dynamically forward live alerts from your Wazuh Manager into this AI SOC dashboard, add this integration block to your Wazuh Manager configuration:
+      </p>
+
+      <div class="space-y-1">
+        <span class="text-[11px] font-semibold text-slate-400 uppercase">1. In /var/ossec/etc/ossec.conf:</span>
+        <pre class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-cyan-300 mono overflow-x-auto">&lt;ossec_config&gt;
+  &lt;integration&gt;
+    &lt;name&gt;custom-threat-analyzer&lt;/name&gt;
+    &lt;hook_url&gt;http://127.0.0.1:8080/api/wazuh&lt;/hook_url&gt;
+    &lt;level&gt;5&lt;/level&gt;
+    &lt;alert_format&gt;json&lt;/alert_format&gt;
+  &lt;/integration&gt;
+&lt;/ossec_config&gt;</pre>
+      </div>
+
+      <div class="space-y-1">
+        <span class="text-[11px] font-semibold text-slate-400 uppercase">2. Script in /var/ossec/integrations/custom-threat-analyzer:</span>
+        <pre class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-300 mono overflow-x-auto">Available at: ai-soc-dashboard/wazuh/custom-threat-analyzer.py
+Command: chmod 750 &amp;&amp; chown root:ossec</pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Audio Alert Beep using Web Audio API
+    let soundEnabled = true;
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playAlertSound(threatLevel) {
+      if (!soundEnabled) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = threatLevel === 'CRITICAL' ? 'sawtooth' : 'sine';
+        osc.frequency.setValueAtTime(threatLevel === 'CRITICAL' ? 880 : 540, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      } catch (_e) {}
+    }
+
+    document.getElementById('sound-btn').addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      const icon = document.getElementById('sound-icon');
+      if (soundEnabled) {
+        icon.className = 'w-4 h-4 text-emerald-400';
+      } else {
+        icon.className = 'w-4 h-4 text-slate-600';
+      }
+    });
+
+    let alertsData = [];
+    let currentFilter = 'ALL';
+
+    function getBadgeClass(level) {
+      switch ((level || '').toUpperCase()) {
+        case 'CRITICAL':
+          return 'bg-rose-500/10 text-rose-400 border border-rose-500/30';
+        case 'HIGH':
+          return 'bg-amber-500/10 text-amber-400 border border-amber-500/30';
+        case 'MEDIUM':
+          return 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30';
+        default:
+          return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
+      }
+    }
+
+    function renderAlerts() {
+      const tbody = document.getElementById('alerts-tbody');
+      const filtered = alertsData.filter((a) => {
+        if (currentFilter === 'ALL') return true;
+        return (a.aiAnalysis?.threat_level || 'LOW').toUpperCase() === currentFilter;
+      });
+
+      document.getElementById('feed-counter').textContent = `Showing ${filtered.length} of ${alertsData.length} alerts`;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="text-center py-12 text-slate-500 text-sm">
+              No alerts matching filter "${currentFilter}".
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map((alert) => `
+        <tr class="alert-enter hover:bg-slate-800/40 transition-colors cursor-pointer" onclick="openModal('${alert.id}')">
+          <td class="py-3.5 px-5 text-xs text-slate-400 mono whitespace-nowrap">
+            ${new Date(alert.timestamp).toLocaleTimeString()}
+          </td>
+          <td class="py-3.5 px-5">
+            <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full ${getBadgeClass(alert.aiAnalysis?.threat_level)}">
+              ${alert.aiAnalysis?.threat_level || 'LOW'}
+            </span>
+          </td>
+          <td class="py-3.5 px-5 mono font-semibold text-cyan-300 whitespace-nowrap">
+            ${alert.ip}
+            ${alert.threatIntel?.abuseipdb?.country ? `<span class="text-slate-500 text-[11px] font-normal ml-1">(${alert.threatIntel.abuseipdb.country})</span>` : ''}
+          </td>
+          <td class="py-3.5 px-5 text-white font-medium whitespace-nowrap">
+            ${alert.aiAnalysis?.attack_type || 'Unclassified Event'}
+          </td>
+          <td class="py-3.5 px-5 text-xs text-slate-300 max-w-md truncate">
+            ${alert.aiAnalysis?.summary || alert.log}
+          </td>
+          <td class="py-3.5 px-5 text-right whitespace-nowrap">
+            <button class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600/40 transition">
+              Inspect
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function updateStats() {
+      fetch('/api/stats')
+        .then((r) => r.json())
+        .then((stats) => {
+          document.getElementById('metric-total').textContent = stats.totalAlerts || alertsData.length || 0;
+          document.getElementById('metric-critical').textContent = (stats.breakdown?.critical || 0) + (stats.breakdown?.high || 0);
+        })
+        .catch(() => {});
+    }
+
+    // Connect to Server-Sent Events (SSE) Stream
+    function connectSSE() {
+      const evtSource = new EventSource('/api/stream');
+
+      evtSource.addEventListener('connected', () => {
+        document.getElementById('connection-status').textContent = 'STREAMING LIVE';
+      });
+
+      evtSource.addEventListener('new_alert', (e) => {
+        const newAlert = JSON.parse(e.data);
+        alertsData.unshift(newAlert);
+        if (alertsData.length > 200) alertsData.pop();
+
+        playAlertSound(newAlert.aiAnalysis?.threat_level);
+        renderAlerts();
+        updateStats();
+      });
+
+      evtSource.onerror = () => {
+        document.getElementById('connection-status').textContent = 'RECONNECTING...';
+      };
+    }
+
+    // Modal Details Viewer
+    function openModal(id) {
+      const alert = alertsData.find((a) => a.id === id);
+      if (!alert) return;
+
+      document.getElementById('modal-threat-badge').className = `px-2.5 py-0.5 text-xs font-bold rounded-full ${getBadgeClass(alert.aiAnalysis?.threat_level)}`;
+      document.getElementById('modal-threat-badge').textContent = `${alert.aiAnalysis?.threat_level || 'LOW'} THREAT`;
+      document.getElementById('modal-attack-type').textContent = alert.aiAnalysis?.attack_type || 'Security Alert';
+      document.getElementById('modal-timestamp').textContent = `Timestamp: ${new Date(alert.timestamp).toLocaleString()} | ID: ${alert.id}`;
+      document.getElementById('modal-ip').textContent = alert.ip;
+      document.getElementById('modal-country').textContent = `Country: ${alert.threatIntel?.abuseipdb?.country || 'Unknown'} (${alert.threatIntel?.abuseipdb?.isp || 'Unknown ISP'})`;
+      document.getElementById('modal-abuse-score').textContent = `${alert.threatIntel?.abuseipdb?.score || 0}%`;
+      document.getElementById('modal-abuse-reports').textContent = `${alert.threatIntel?.abuseipdb?.totalReports || 0} Reports`;
+      document.getElementById('modal-otx-pulses').textContent = `${alert.threatIntel?.alienvault_otx?.pulseCount || 0} Pulses`;
+
+      const tagsContainer = document.getElementById('modal-otx-tags');
+      const tags = alert.threatIntel?.alienvault_otx?.tags || [];
+      tagsContainer.innerHTML = tags.map((t) => `<span class="px-1.5 py-0.5 bg-slate-800 text-[10px] rounded text-slate-300 mono">${t}</span>`).join('');
+
+      document.getElementById('modal-ai-summary').textContent = alert.aiAnalysis?.summary || 'N/A';
+      document.getElementById('modal-ai-details').textContent = alert.aiAnalysis?.technical_details || 'N/A';
+      document.getElementById('modal-ai-action').textContent = alert.aiAnalysis?.recommended_action || 'Monitor';
+      document.getElementById('modal-raw-log').textContent = typeof alert.log === 'object' ? JSON.stringify(alert.log, null, 2) : alert.log;
+
+      document.getElementById('detail-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('detail-modal').classList.add('hidden');
+    }
+
+    function closeConfigModal() {
+      document.getElementById('config-modal').classList.add('hidden');
+    }
+
+    document.getElementById('config-btn').addEventListener('click', () => {
+      document.getElementById('config-modal').classList.remove('hidden');
+    });
+
+    // Filter Switcher
+    document.querySelectorAll('.filter-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach((b) => {
+          b.className = 'filter-btn px-3 py-1 text-xs rounded-lg font-medium text-slate-400 hover:text-white';
+        });
+        btn.className = 'filter-btn active px-3 py-1 text-xs rounded-lg font-medium text-white bg-blue-600';
+        currentFilter = btn.getAttribute('data-filter');
+        renderAlerts();
+      });
+    });
+
+    // Simulator Triggers
+    function triggerSimulation(type) {
+      let payload = {};
+      if (type === 'sql') {
+        payload = {
+          ip: '185.220.101.5',
+          log: "GET /api/search?q='%20UNION%20SELECT%20null,username,password%20FROM%20users-- HTTP/1.1 500 SQL syntax error",
+          ruleId: 100104,
+          level: 12,
+          description: 'Web Application SQL Injection Extraction Attempt'
+        };
+      } else if (type === 'ssh') {
+        payload = {
+          ip: '118.25.6.39',
+          log: "cowrie.login.failed: 15 consecutive authentication failures for root/admin within 30s",
+          ruleId: 100102,
+          level: 10,
+          description: 'Honeypot Cowrie SSH Brute-Force Authentication Spike'
+        };
+      } else {
+        payload = {
+          ip: '194.26.29.112',
+          log: "GET /admin/db_backup.sql HTTP/1.1 404 Not Found - Reconnaissance for database backup files",
+          ruleId: 100101,
+          level: 7,
+          description: 'Honeypot Reconnaissance & Sensitive File Probing'
+        };
+      }
+
+      fetch('/api/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    // Initial Load
+    fetch('/api/alerts')
+      .then((r) => r.json())
+      .then((res) => {
+        alertsData = res.alerts || [];
+        renderAlerts();
+        updateStats();
+      })
+      .catch(() => {});
+
+    connectSSE();
+    lucide.createIcons();
+  </script>
+</body>
+</html>

@@ -35,3 +35,5 @@ coverage/
 .pgdata/
 
 keyhoney.txt
+ai-soc-dashboard/.env
+ai-soc-dashboard/node_modules/
